@@ -84,6 +84,8 @@ $pad-red: #e85a58;
 .btn.mode { width: 36px; height: 24px; top: 74px; border-radius: 12px; }
 .btn.scene { width: 34px; height: 22px; border-radius: 11px; }
 .btn.pill { width: 38px; height: 24px; border-radius: 12px; }
+/* The scene INIT key is the same size as the scene ovals next to it. */
+.btn.pill.scene-size { width: 34px; height: 22px; border-radius: 11px; }
 
 /* Lit state: a small red LED inside the key rather than lighting the whole key. */
 .btn.lit::after {
@@ -128,9 +130,9 @@ $pad-red: #e85a58;
   border-top: 1.5px dotted rgba(230,231,234,.7); border-right: 1.5px dotted rgba(230,231,234,.7);
 }
 .num-tab {
-  width: 40px; height: 10px; transform: translate(-50%, 0); text-align: center; font-weight: 500;
-  font-size: 7px; line-height: 10px; background: transparent; color: $silk; border: 1px solid $silk;
-  box-sizing: border-box;
+  width: 40px; height: 11px; transform: translate(-50%, 0); font-weight: 500;
+  display: grid; place-items: center; font-size: 7px; line-height: 1;
+  background: transparent; color: $silk; border: 1px solid $silk; box-sizing: border-box;
 }
 
 // ---------- transport ----------

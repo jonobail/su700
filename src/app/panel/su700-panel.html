@@ -43,16 +43,16 @@
     <span class="sm-label">MARKER</span>
   </div>
   <div class="dotted-frame"></div>
-  <div class="label c boxed" style="left: 308px; top: 283px">INIT</div>
-  <button class="btn pill c" style="left: 308px; top: 305px" aria-label="Scene init"
+  <div class="label c boxed" style="left: 308px; top: 277px">INIT</div>
+  <button class="btn pill scene-size c" style="left: 308px; top: 305px" aria-label="Scene init"
           [class.lit]="unit.initHeld()" (pointerdown)="unit.initHeld.set(true)"
           (pointerup)="unit.initHeld.set(false)" (pointerleave)="unit.initHeld.set(false)"></button>
   @for (s of scenes; track s; let i = $index) {
-    <div class="label c boxed" [style.left.px]="gridX[i]" style="top: 283px">{{ s }}</div>
+    <div class="label c boxed" [style.left.px]="gridX[i]" style="top: 277px">{{ s }}</div>
     <button class="btn scene c" [style.left.px]="gridX[i]" style="top: 305px"
             [attr.aria-label]="'Scene ' + s" (pointerdown)="unit.scenePress(i, true)"
             (pointerup)="unit.scenePress(i, false)" (pointerleave)="unit.scenePress(i, false)"></button>
-    <div class="num-tab c" [style.left.px]="gridX[i]" style="top: 327px">{{ i + 1 }}</div>
+    <div class="num-tab c" [style.left.px]="gridX[i]" style="top: 323px">{{ i + 1 }}</div>
   }
 
   <!-- ================= TRANSPORT ================= -->
