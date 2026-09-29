@@ -82,8 +82,6 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
     </div>
   `,
   styles: `
-    @font-face { font-family: DSEG14; src: url('/fonts/DSEG14Classic-Bold.woff2') format('woff2'); }
-    @font-face { font-family: DSEG7; src: url('/fonts/DSEG7Classic-Bold.woff2') format('woff2'); }
     :host { display: block; }
     .glass {
       position: relative; width: 100%; height: 100%; box-sizing: border-box; padding: 5px 10px 6px 14px;

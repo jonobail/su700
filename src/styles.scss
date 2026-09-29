@@ -1,3 +1,8 @@
+/* VFD segment fonts (DSEG, SIL OFL — see public/fonts/DSEG-LICENSE.txt). Relative URLs so the
+   build bundles them and the app works under any base href (e.g. GitHub Pages /su700/). */
+@font-face { font-family: DSEG14; src: url('./fonts/DSEG14Classic-Bold.woff2') format('woff2'); }
+@font-face { font-family: DSEG7; src: url('./fonts/DSEG7Classic-Bold.woff2') format('woff2'); }
+
 html, body { margin: 0; min-height: 100%; }
 body {
   background: #1c1d21;
