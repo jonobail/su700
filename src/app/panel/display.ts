@@ -31,7 +31,7 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
         }
         <span class="clip" [class.on]="m.clip">CLIP</span>
       </div>
-      <div class="brand"><span class="small">SAMPLING UNIT</span><span class="logo">SU700</span></div>
+      <img class="brand" src="su700-logo.svg" alt="SAMPLING UNIT SU700" draggable="false" />
 
       <div class="main">
         <div class="left">
@@ -92,21 +92,18 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
       box-shadow: inset 0 0 0 2px #05070a, inset 0 3px 8px rgba(0,0,0,.9);
       --cyan: #7ff3e6; --dim: rgba(127, 243, 230, .08);
     }
-    .brand { position: absolute; right: 12px; top: 3px; display: flex; align-items: baseline; gap: 5px; }
-    .brand .small { font: 700 5.5px/1 Arial, sans-serif; color: #d2242d; letter-spacing: .5px; }
-    .brand .logo {
-      font: italic 900 17px/1 'Arial Black', Arial, sans-serif; letter-spacing: 1px;
-      color: transparent; -webkit-text-stroke: .8px #e0232e; text-shadow: 0 0 6px rgba(224,35,46,.4);
-    }
+    /* Printed legend, placed where it sits on the real glass (panel coords 469,421 minus the glass origin). */
+    .brand { position: absolute; left: 176.3px; top: 6.6px; width: 181.2px; pointer-events: none; }
+    /* Indicator row sits below the printed legend, as on the unit. */
     .ann {
-      margin-top: 3px; display: flex; gap: 5px; font: 700 5.5px/1 Arial, sans-serif; color: var(--dim);
-      padding-right: 120px;
+      margin-top: 22px; display: flex; gap: 5px; font: 700 5.5px/1 Arial, sans-serif; color: var(--dim);
+      padding-right: 100px;
     }
     .ann .on { color: var(--cyan); text-shadow: 0 0 4px var(--cyan); }
     .ann .rec.on, .ann .clip.on { color: #ff5a4a; text-shadow: 0 0 4px #ff5a4a; }
     .ann .gap { flex: 0 0 10px; }
 
-    .main { display: flex; flex: 1; margin-top: 8px; gap: 8px; }
+    .main { display: flex; flex: 1; margin-top: 4px; gap: 8px; }
     .left { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .right { width: 92px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
     .alpha, .num { position: relative; line-height: 1; }
