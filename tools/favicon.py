@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """Pixel-art SU700 favicon.
 
-Draws the panel onto a 32x32 grid (positions mapped from the on-screen panel) and writes
+Draws the panel onto a 32x32 grid (positions and colours measured from a photo of
+the real unit) and writes
 public/favicon.svg, public/favicon.ico (16 hand-drawn, 32, 64) and public/apple-touch-icon.png.
 No dependencies: python3 tools/favicon.py
 """
 import pathlib, struct, sys, zlib
 
 C = {
-    'body': '#40465a', 'front': '#474d61',
-    'shade': '#2f3443', 'silk': '#e6e7ea', 'box': '#eceded', 'print': '#5f6578',
-    'key': '#1e1f23', 'gray': '#b4b6ba', 'cream': '#ebe7dc', 'cream_edge': '#b9b5aa',
-    'led': '#ff3b30', 'disp': '#05090d', 'unlit': '#1b2629', 'vfd': '#9ff5e6', 'logo': '#ff3b30',
-    'm_or': '#ffae3d', 'm_wh': '#dcfff8', 'm_bl': '#6aa4ff', 'm_rd': '#ff4e4e',
-    'k_or': '#ef9149', 'k_cr': '#e9e3cf', 'k_bl': '#a6aac2', 'k_rd': '#e14a42',
-    'p_or': '#f29c52', 'p_gr': '#c9cacd', 'p_bl': '#8e93c3', 'p_rd': '#e85a58',
-    'ribbon': '#565c70', 'line': '#8b90a0',
+    'body': '#3e546d', 'front': '#1c3b59', 'shade': '#0e2b43', 'slot': '#0a1c2b',
+    'silk': '#dfe3e7', 'box': '#ccd3d7', 'print': '#566b80', 'line': '#91a0ae', 'label': '#aeb8c2',
+    'key': '#262d35', 'gray': '#9ba7b1', 'cream': '#ede4de', 'cream_edge': '#b8b0aa',
+    'led': '#e0322c', 'disp': '#141b1f', 'unlit': '#2c3a3c', 'vfd': '#6fd6c8', 'logo': '#d8403a',
+    'm_or': '#e7ae2d', 'm_wh': '#e0ebeb', 'm_bl': '#6697c1', 'm_rd': '#e2524e',
+    'k_or': '#e3924f', 'k_cr': '#dfe3e6', 'k_bl': '#93a2c9', 'k_rd': '#d85466',
+    'p_or': '#e8944d', 'p_gr': '#b7c0cb', 'p_bl': '#6787b6', 'p_rd': '#de5f6d',
+    'p_or_dk': '#c97a3a', 'p_gr_dk': '#98a2ae', 'p_bl_dk': '#546f98', 'p_rd_dk': '#c24a59',
+    'ribbon': '#4a6b88',
 }
 
 W = H = 32
@@ -30,19 +32,21 @@ def rect(x0, y0, x1, y1, c):
         for x in range(x0, x1 + 1):
             put(x, y, c)
 
-# ---- chassis: top surface rows 2-22, front rows 23-29, rounded corners ----
-rect(0, 2, 31, 22, 'body')
-rect(0, 23, 31, 29, 'front')
-rect(0, 23, 31, 23, 'shade')
+# ---- chassis: blue top surface rows 2-21, darker navy front rows 22-29 ----
+rect(0, 2, 31, 21, 'body')
+rect(0, 22, 31, 29, 'front')
+rect(0, 22, 31, 22, 'shade')
 for x, y in [(0, 2), (31, 2), (0, 29), (31, 29)]:
     px[y][x] = None
 
 # ---- knob function column: white tabs + key columns (third column only where the panel has one) ----
-for y0, y1 in [(3, 5), (7, 7), (9, 10), (12, 13), (15, 15), (17, 18), (20, 20)]:
+for y0, y1 in [(3, 5), (7, 7), (9, 10), (12, 13), (15, 15), (17, 19)]:
     rect(1, y0, 2, y1, 'box')
-for y, n in {4: 3, 6: 3, 8: 2, 10: 2, 12: 2, 14: 3, 16: 3, 18: 2, 20: 2}.items():
+for y, n in {4: 3, 6: 3, 8: 2, 10: 2, 12: 2, 14: 3, 16: 3, 18: 2}.items():
     for i in range(n):
         put(4 + 2 * i, y, 'gray' if y >= 16 else 'key')
+for x, y in [(1, 20), (1, 21), (3, 21)]:
+    put(x, y, 'label')                                   # dotted line to the knobs
 
 # ---- mode keys with white labels, function grid with gray pills ----
 cols = range(11, 22, 2)
@@ -67,48 +71,51 @@ for x in (13, 15, 17, 19):
     put(x, 14, 'cream_edge')
 rect(21, 13, 22, 14, 'gray')
 
-# ---- display: VFD text, SU700 logo, 12 track meters ----
-rect(9, 16, 22, 21, 'disp')
-for x in (10, 11, 13, 14, 15):
-    put(x, 17, 'vfd')                                    # "01 NEW SONG"
-rect(19, 17, 21, 17, 'logo')                             # SU700
+# ---- display: SU700 logo, counter, 12 track meters ----
+rect(9, 15, 22, 19, 'disp')
+for x in range(10, 18):
+    put(x, 16, 'unlit')                                  # unlit 14-segment characters
+rect(19, 15, 21, 15, 'logo')                             # SU700
+rect(19, 16, 21, 16, 'vfd')                              # 001:1
 meters = ['m_or', 'm_or', 'm_wh', 'm_wh', 'm_wh', 'm_wh', 'm_bl', 'm_bl', 'm_bl', 'm_bl', 'm_or', 'm_rd']
 tall = [1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1]
 for i, (c, t) in enumerate(zip(meters, tall)):
     x = 10 + i
-    put(x, 19, c if t else 'unlit')
-    put(x, 20, c)
+    put(x, 17, c if t else 'unlit')
+    put(x, 18, c)
 
 # ---- right side: YAMAHA, sampling box, jog, measure/bpm/note, ribbon ----
-put(24, 3, 'silk'); rect(26, 3, 30, 3, 'silk')           # emblem + wordmark
-rect(23, 5, 27, 8, 'line'); rect(24, 6, 26, 7, 'body')   # sampling box outline
-rect(24, 6, 25, 7, 'cream'); put(26, 6, 'key')           # START/STOP key, level knob
-put(29, 6, 'key')                                        # master volume
-put(24, 9, 'key'); put(26, 9, 'key')                     # < > keys
-put(29, 9, 'key')                                        # bpm counter
-rect(23, 11, 27, 15, 'key')                              # jog wheel
-for x, y in [(23, 11), (27, 11), (23, 15), (27, 15)]:
+put(25, 2, 'silk'); rect(27, 2, 30, 2, 'silk')           # emblem + wordmark
+rect(23, 4, 27, 7, 'line'); rect(24, 5, 26, 6, 'body')   # sampling box outline
+rect(24, 5, 25, 6, 'cream'); put(26, 5, 'key')           # START/STOP key, level knob
+put(29, 5, 'key')                                        # master volume
+put(24, 8, 'key'); put(26, 8, 'key')                     # < > keys
+put(29, 10, 'key')                                       # bpm counter
+rect(23, 9, 27, 13, 'key')                               # jog wheel
+for x, y in [(23, 9), (27, 9), (23, 13), (27, 13)]:
     put(x, y, 'body')
-put(24, 17, 'key'); put(26, 17, 'key')                   # cancel / ok
-for y in (19, 21):
+put(24, 15, 'key'); put(26, 15, 'key')                   # cancel / ok
+for y in (17, 19):
     put(24, y, 'key')                                    # measure / bpm / note
-rect(28, 12, 30, 21, 'ribbon'); rect(29, 13, 29, 20, 'key')
+rect(28, 11, 30, 19, 'ribbon'); rect(29, 12, 29, 18, 'key')
 
-# ---- knob row ----
+# ---- knob row, with the fader slots running down into the front ----
 knobs = ['k_or', 'k_or', 'k_cr', 'k_cr', 'k_cr', 'k_cr', 'k_bl', 'k_bl', 'k_bl', 'k_bl', 'k_or', 'k_rd']
 for i, c in enumerate(knobs):
-    put(5 + 2 * i, 22, c)
-put(29, 22, 'key')                                       # ribbon track
+    put(5 + 2 * i, 21, c)
+    put(5 + 2 * i, 23, 'slot')
+put(29, 21, 'key')                                       # ribbon track
 
-# ---- front: track bank, 12 pads, pad function, group labels ----
-for y, c in zip(range(24, 28), ['gray', 'p_bl', 'p_or', 'p_rd']):
+# ---- front: track bank, 12 pads, pad function, white group labels ----
+for y, c in zip(range(24, 28), ['p_gr', 'p_bl', 'p_or', 'p_rd']):
     rect(1, y, 2, y, c)
     rect(29, y, 30, y, c)
 pads = ['p_or', 'p_or', 'p_gr', 'p_gr', 'p_gr', 'p_gr', 'p_bl', 'p_bl', 'p_bl', 'p_bl', 'p_or', 'p_rd']
 for i, c in enumerate(pads):
-    rect(4 + 2 * i, 24 if 2 <= i <= 9 else 25, 5 + 2 * i - 1, 27, c)
+    # 2px pads with no gap; alternate pads use a darker tone so neighbours stay distinct
+    rect(4 + 2 * i, 24 if 2 <= i <= 9 else 25, 5 + 2 * i, 26, c + '_dk' if i % 2 else c)
 for x0, x1 in [(4, 6), (8, 14), (16, 22), (24, 24), (26, 26)]:
-    rect(x0, 28, x1, 28, 'print')
+    rect(x0, 27, x1, 27, 'label')
 
 # ---- 16x16: hand-simplified, since halving the 32 grid turns to mush ----
 SMALL = """
@@ -120,7 +127,7 @@ BWBKBBBBBBBBCCKB
 BBBKBRBCCCBGBBBB
 BWBBBBBBBBBBKKBB
 BWBGBDDDDDDBKKBK
-BWBGBqqDDRRBBBBK
+BWBGBDDDDRqBBBBK
 BBBBBoowwuuBKBBK
 BBOBEBEBVBVBXBBB
 aaaaaaaaaaaaaaaa
