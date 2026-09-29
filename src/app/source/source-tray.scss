@@ -27,6 +27,7 @@ button, .upload {
     &::placeholder { color: rgba(127,243,230,.35); }
   }
 }
+.note { font-size: 11px; line-height: 1.35; opacity: .75; }
 .upload {
   display: block; text-align: center;
   input { display: none; }

@@ -1,11 +1,27 @@
+@if (sampling(); as v) {
+  <su-youtube-sampler [videoId]="v.id" [initialStart]="v.start" (close)="sampling.set(null)" />
+}
 <div class="tray" [class.drag]="dragging()">
   <div class="col inputs">
     <div class="title">AUDIO IN <span>SOURCE</span></div>
-    <form class="yt" (submit)="$event.preventDefault(); fetchYouTube()">
-      <input type="url" placeholder="Paste a YouTube link…" [value]="ytUrl()"
-             (input)="ytUrl.set($any($event.target).value)" [disabled]="!!loader.busy()" />
-      <button type="submit" [disabled]="!ytUrl().trim() || !!loader.busy()">FETCH</button>
-    </form>
+    @switch (youtube.status()) {
+      @case ('online') {
+        <form class="yt" (submit)="$event.preventDefault(); openSampler()">
+          <input type="url" placeholder="Paste a YouTube link…" [value]="ytUrl()" aria-label="YouTube link"
+                 (input)="ytUrl.set($any($event.target).value)" />
+          <button type="submit" [disabled]="!ytId()" title="Preview the video and sample up to {{ youtube.maxSeconds() }} s">SAMPLE…</button>
+        </form>
+        @if (ytUrl().trim() && !ytId()) {
+          <div class="note">That doesn't look like a YouTube video link.</div>
+        }
+      }
+      @case ('checking') {
+        <div class="note">Checking YouTube sampling…</div>
+      }
+      @default {
+        <div class="note">YouTube sampling is offline right now. Upload a file, or run the helper locally (see README).</div>
+      }
+    }
     <label class="upload" [class.disabled]="!!loader.busy()">
       <input #file type="file" accept="audio/*,video/*" multiple (change)="pick(file)" />
       UPLOAD AUDIO <small>or drop files anywhere</small>

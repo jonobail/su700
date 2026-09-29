@@ -44,3 +44,4 @@ __screenshots__/
 Thumbs.db
 server/bin/
 .manual/
+server/.env

@@ -4,15 +4,19 @@ import {
 import { AudioEngine } from '../audio/audio-engine';
 import { SourceLoader } from '../audio/source-loader';
 import { SourceStore } from '../audio/source-store';
+import { parseStartTime, parseYouTubeId } from '../audio/youtube-id';
+import { YouTubeSnippets } from '../audio/youtube-snippets';
 import { trackLabel } from '../core/model';
 import { UnitController } from '../unit-controller';
+import { YouTubeSampler } from './youtube-sampler';
 
 /**
  * Replaces the SU700's analog inputs: pick the AUDIO IN source from an uploaded file or a
- * YouTube link. Sources are kept in IndexedDB so they survive reloads.
+ * short snippet sampled from a YouTube video. Sources are kept in IndexedDB so they survive reloads.
  */
 @Component({
   selector: 'su-source-tray',
+  imports: [YouTubeSampler],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './source-tray.html',
   styleUrl: './source-tray.scss',
@@ -27,9 +31,13 @@ export class SourceTray {
   protected readonly loader = inject(SourceLoader);
   protected readonly store = inject(SourceStore);
   protected readonly unit = inject(UnitController);
+  protected readonly youtube = inject(YouTubeSnippets);
   protected readonly targetLabel = computed(() => trackLabel(this.unit.lastTrack()));
 
   protected readonly ytUrl = signal('');
+  protected readonly ytId = computed(() => parseYouTubeId(this.ytUrl()));
+  /** The video open in the sampler dialog, if any. */
+  protected readonly sampling = signal<{ id: string; start: number } | null>(null);
   protected readonly dragging = signal(false);
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('wave');
 
@@ -59,12 +67,9 @@ export class SourceTray {
     effect(() => this.draw(this.peaks(), this.engine.sourcePosition(), this.duration()));
   }
 
-  protected fetchYouTube(): void {
-    const url = this.ytUrl().trim();
-    if (!url) return;
-    void this.loader.fromYouTube(url).then(() => {
-      if (!this.loader.error()) this.ytUrl.set('');
-    });
+  protected openSampler(): void {
+    const id = this.ytId();
+    if (id) this.sampling.set({ id, start: parseStartTime(this.ytUrl()) });
   }
 
   /** Import the whole source onto the last-selected sample track (like DISK | LOAD / IMPORT). */

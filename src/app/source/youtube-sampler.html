@@ -1,0 +1,60 @@
+<div class="backdrop" (click)="close.emit()"></div>
+<div class="dialog" role="dialog" aria-label="Sample from YouTube">
+  @if (state() === 'sampling') {
+    <div class="progress" role="progressbar" aria-label="Sampling"></div>
+  }
+  <div class="head">
+    <span class="title">YOUTUBE <span>SAMPLER</span></span>
+    <button class="x" (click)="close.emit()" aria-label="Close">✕</button>
+  </div>
+
+  <div class="body">
+    <div class="video"><div #player></div></div>
+
+    <div class="controls">
+      <div class="row start">
+        <div class="readout">
+          <small>START</small>
+          <b>{{ fmt(start()) }}</b>
+        </div>
+        <button class="mark" (click)="markStart()" [disabled]="state() === 'loading' || state() === 'sampling'">MARK START</button>
+      </div>
+      <div class="row nudges">
+        <button (click)="nudge(-1)" [disabled]="state() === 'loading' || state() === 'sampling'">−1s</button>
+        <button (click)="nudge(-0.1)" [disabled]="state() === 'loading' || state() === 'sampling'">−0.1</button>
+        <button (click)="nudge(0.1)" [disabled]="state() === 'loading' || state() === 'sampling'">+0.1</button>
+        <button (click)="nudge(1)" [disabled]="state() === 'loading' || state() === 'sampling'">+1s</button>
+      </div>
+
+      <div class="row lengths" role="radiogroup" aria-label="Sample length">
+        <small>LENGTH</small>
+        @for (l of lengths; track l) {
+          @if (l <= snippets.maxSeconds()) {
+            <button role="radio" [attr.aria-checked]="length() === l" [class.on]="length() === l"
+                    (click)="length.set(l)" [disabled]="state() === 'sampling'">{{ l }}s</button>
+          }
+        }
+      </div>
+
+      <div class="row actions">
+        <button (click)="preview()" [disabled]="state() === 'loading' || state() === 'sampling'">▶ PREVIEW</button>
+        <button class="go" (click)="sample()" [disabled]="state() === 'loading' || state() === 'sampling'">
+          {{ state() === 'sampling' ? 'SAMPLING…' : 'SAMPLE ' + fmt(start()) + ' – ' + fmt(start() + effectiveLength()) }}
+        </button>
+      </div>
+
+      <div class="msg" [class.err]="state() === 'error'" [class.ok]="state() === 'done'" aria-live="polite">
+        @if (state() === 'sampling') {
+          <span class="spinner" aria-hidden="true"></span>
+        }
+        <span>{{ message() }}</span>
+      </div>
+      <div class="ts" #turnstile></div>
+    </div>
+  </div>
+
+  <p class="fine">
+    Preview plays in YouTube's own player. Sampling fetches only the selected clip (up to
+    {{ snippets.maxSeconds() }} s), with hourly and daily limits. Please sample responsibly.
+  </p>
+</div>

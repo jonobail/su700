@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { AudioEngine } from './audio-engine';
 import { AudioSourceMeta, SourceStore } from './source-store';
 
-/** Brings audio into the unit: local file uploads or YouTube links (via the local /api server). */
+/** Brings audio into the unit: local file uploads, or YouTube snippets (see YouTubeSnippets). */
 @Injectable({ providedIn: 'root' })
 export class SourceLoader {
   private readonly store = inject(SourceStore);
@@ -27,27 +27,16 @@ export class SourceLoader {
     }
   }
 
-  async fromYouTube(url: string): Promise<void> {
-    await this.run('FETCHING YOUTUBE AUDIO', async () => {
-      const q = encodeURIComponent(url.trim());
-      const infoRes = await fetch(`/api/youtube/info?url=${q}`);
-      if (!infoRes.ok) throw new Error(await errorText(infoRes));
-      const info: { title: string } = await infoRes.json();
-
-      this.busy.set(`DOWNLOADING ${info.title}`);
-      const res = await fetch(`/api/youtube/audio?url=${q}`);
-      if (!res.ok) throw new Error(await errorText(res));
-      const blob = await res.blob();
-      const buffer = await this.engine.decode(blob);
-      const meta = await this.store.add({
-        name: info.title,
-        origin: 'youtube',
-        url: url.trim(),
-        mime: blob.type || res.headers.get('content-type') || 'audio/*',
-        blob,
-      });
-      this.engine.loadSource(meta.id, meta.name, buffer);
-    });
+  /**
+   * Store a sampled YouTube snippet exactly like an upload: decode, save to IndexedDB, load as
+   * the AUDIO IN source. Throws on failure so the sampler can show the error inline.
+   */
+  async addSnippet(wav: ArrayBuffer, name: string, url: string): Promise<void> {
+    this.engine.resume();
+    const blob = new Blob([wav], { type: 'audio/wav' }); // before decoding, which detaches the buffer
+    const buffer = await this.engine.decode(blob);
+    const meta = await this.store.add({ name, origin: 'youtube', url, mime: 'audio/wav', blob });
+    this.engine.loadSource(meta.id, meta.name, buffer);
   }
 
   async select(meta: AudioSourceMeta): Promise<void> {
@@ -80,11 +69,3 @@ export class SourceLoader {
   }
 }
 
-async function errorText(res: Response): Promise<string> {
-  try {
-    const body = await res.json();
-    return body.error ?? res.statusText;
-  } catch {
-    return `YouTube helper not reachable (${res.status}) — start it with "npm run server"`;
-  }
-}

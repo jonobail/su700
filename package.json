@@ -6,10 +6,12 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "test": "node --test \"server/test/*.test.mjs\" \"tests/*.test.ts\"",
     "server": "node server/youtube-server.mjs",
-    "setup:ytdlp": "node server/setup-ytdlp.mjs",
-    "start:tailnet": "ng serve --host 0.0.0.0"
+    "setup:ytdlp": "npm run setup:tools",
+    "start:tailnet": "ng serve --host 0.0.0.0",
+    "setup:tools": "node server/setup-tools.mjs",
+    "build:pages": "ng build --configuration production --base-href /su700/"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
