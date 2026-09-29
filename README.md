@@ -1,59 +1,53 @@
-# Su700
+# SU700
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.0.
+A browser emulation of the Yamaha SU700 Sampling Unit (1999), built with Angular. The input
+audio comes from an uploaded file or a YouTube link instead of the analog inputs.
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Running
 
 ```bash
-ng generate component component-name
+npm install
+npm run setup:ytdlp   # one-time: downloads yt-dlp into server/bin (skipped if already on PATH)
+npm run server        # YouTube helper on :3700 (only needed for YouTube links)
+npm start             # app on http://localhost:4200, proxies /api to the helper
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Uploaded files work without the helper. Sources are stored in the browser's IndexedDB.
 
-```bash
-ng generate --help
-```
+## Playing it
 
-## Building
+The controls follow the Owner's Manual. To get a first loop going:
 
-To build the project run:
+1. Upload audio or paste a YouTube link in the **AUDIO IN** tray, then press **▶ PLAY** there.
+2. Press **STANDBY/START/STOP** (top right). The screen shows `SELECT TRACK`: hit a pad
+   (pads 1–2 are LOOP tracks), then **OK**.
+3. On the `44K 16BIT STEREO` screen, press **STANDBY/START/STOP** to start sampling and again
+   to stop. LOOP tracks get their loop length automatically.
+4. Press the transport **▶** to run the sequencer. **●** then **▶** records pads, knobs and
+   scenes (2-bar countdown).
 
-```bash
-ng build
-```
+Or select a track by hitting its pad and use **IMPORT → track** in the tray to load the
+whole source onto it.
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+| Key | Action |
+|---|---|
+| `Q W E R T Y U I O P [ ]` | the 12 pads |
+| Space | play / stop |
+| ↑ ↓ | dial |
+| ← → | cursor buttons |
+| Enter / Esc | OK / CANCEL |
 
-## Running unit tests
+Knobs: drag vertically or scroll (Shift for fine), double-click to reset. Scene and marker
+buttons: tap to recall or jump, hold 1.5 s to store.
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+In dev mode, `su700` in the browser console exposes the controller, sequencer and audio engine.
 
-```bash
-ng test
-```
+## Layout
 
-## Running end-to-end tests
+- `src/app/core/`: data model, the 22 knob functions, sequencer
+- `src/app/audio/`: Web Audio engine, source storage and loading
+- `src/app/unit-controller.ts`: front-panel behaviour (screens, pads, buttons, sampling)
+- `src/app/panel/`: the faceplate, knobs, dial and VFD display
+- `server/`: yt-dlp helper for YouTube audio
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what's emulated so far and what's next.

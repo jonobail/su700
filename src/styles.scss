@@ -1,1 +1,16 @@
-/* You can add global styles to this file, and also import other style files */
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: #1c1d21;
+  color: #e9ecf1; font-family: 'Helvetica Neue', Arial, sans-serif; padding: 8px 0 180px;
+  box-sizing: border-box;
+}
+button { font: inherit; }
+/* Stop iOS double-tap zoom from swallowing quick repeated button taps. */
+button, input { touch-action: manipulation; }
+
+/* COMPACT (phones/tablets): the tray flows below the panel instead of being pinned. */
+@media (pointer: coarse), (max-width: 999px) {
+  body {
+    padding: max(2px, env(safe-area-inset-top)) max(2px, env(safe-area-inset-right)) 0 max(2px, env(safe-area-inset-left));
+  }
+}

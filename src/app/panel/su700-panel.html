@@ -1,0 +1,177 @@
+<div class="frame" [style.width.px]="W * scale()" [style.height.px]="H * scale()">
+<div class="unit" [style.transform]="'scale(' + scale() + ')'">
+  <div class="top-surface"></div>
+  <div class="front-surface"></div>
+
+  <!-- ================= KNOB FUNCTION ================= -->
+  <div class="caption" style="left: 52px; top: 37px; font-size: 8.5px">KNOB FUNCTION</div>
+  @for (t of knobFnTabs; track t[0]) {
+    <div class="tab" [style.top.px]="t[1]" [style.height.px]="t[2] - t[1]">{{ t[0] }}</div>
+  }
+  @for (row of knobFnRows; track row.y) {
+    @for (b of row.buttons; track b.label) {
+      <div class="label c" [style.left.px]="b.x" [style.top.px]="row.y - 16">{{ b.label }}</div>
+      <button class="btn c" [class.gray]="b.gray" [class.black]="!b.gray"
+              [class.lit]="knobFnLit(b)"
+              [style.left.px]="b.x" [style.top.px]="row.y" [attr.aria-label]="b.label"
+              (pointerdown)="knobFnDown(b)" (pointerup)="knobFnUp(b)" (pointerleave)="knobFnUp(b)"></button>
+    }
+  }
+
+  <!-- ================= MODE + FUNCTION GRID ================= -->
+  @for (m of modes; track m.mode; let i = $index) {
+    <div class="mode-label c" [style.left.px]="gridX[i]">{{ m.label }}</div>
+    <button class="btn mode c" [class.lit]="unit.jobGroup() === m.mode" [style.left.px]="gridX[i]"
+            [attr.aria-label]="m.label" (click)="modePress(m.mode)"></button>
+  }
+  @for (y of gridRowsY; track y; let r = $index) {
+    <button class="btn pill c" [style.left.px]="308" [style.top.px]="y" (click)="gridPress(r)"
+            [attr.aria-label]="'Function row ' + (r + 1)"></button>
+    <div class="rule" [style.top.px]="y + 17"></div>
+    @for (cell of grid[r]; track $index; let c = $index) {
+      <div class="grid-cell c" [class.active]="unit.jobGroup() === modes[c].mode"
+           [style.left.px]="gridX[c]" [style.top.px]="y">{{ cell }}</div>
+    }
+  }
+  <div class="grid-col-rule" style="left: 285px"></div>
+
+  <!-- ================= SCENE / MARKER ================= -->
+  <div class="scene-strip">
+    <span class="sm-label">SCENE</span>
+    <button class="slide" [class.right]="unit.sceneMarker() === 'marker'" aria-label="Scene / marker"
+            (click)="unit.sceneMarker.update(s => s === 'scene' ? 'marker' : 'scene')"><i></i></button>
+    <span class="sm-label">MARKER</span>
+  </div>
+  <div class="dotted-frame"></div>
+  <div class="label c boxed" style="left: 308px; top: 283px">INIT</div>
+  <button class="btn pill c" style="left: 308px; top: 305px" aria-label="Scene init"
+          [class.lit]="unit.initHeld()" (pointerdown)="unit.initHeld.set(true)"
+          (pointerup)="unit.initHeld.set(false)" (pointerleave)="unit.initHeld.set(false)"></button>
+  @for (s of scenes; track s; let i = $index) {
+    <div class="label c boxed" [style.left.px]="gridX[i]" style="top: 283px">{{ s }}</div>
+    <button class="btn scene c" [style.left.px]="gridX[i]" style="top: 305px"
+            [attr.aria-label]="'Scene ' + s" (pointerdown)="unit.scenePress(i, true)"
+            (pointerup)="unit.scenePress(i, false)" (pointerleave)="unit.scenePress(i, false)"></button>
+    <div class="num-tab c" [style.left.px]="gridX[i]" style="top: 327px">{{ i + 1 }}</div>
+  }
+
+  <!-- ================= TRANSPORT ================= -->
+  @for (t of transport; track t.id) {
+    <button class="key c" [style.left.px]="t.x" style="top: 365px" [attr.aria-label]="t.id"
+            [class.lit]="transportLit(t.id)"
+            (pointerdown)="transportDown(t.id)" (pointerup)="transportUp(t.id)" (pointerleave)="transportUp(t.id)">
+      @switch (t.id) {
+        @case ('rec') { <span class="rec-dot"></span> }
+        @case ('top') { <svg viewBox="0 0 20 12"><rect x="3" y="1" width="2" height="10"/><path d="M15 1v10L6 6z"/></svg> }
+        @case ('rew') { <svg viewBox="0 0 20 12"><path d="M10 1v10L3 6zM17 1v10L10 6z"/></svg> }
+        @case ('stop') { <svg viewBox="0 0 20 12"><rect x="5" y="1" width="10" height="10"/></svg> }
+        @case ('play') { <svg viewBox="0 0 20 12"><path d="M6 1v10l9-5z"/></svg> }
+        @case ('ff') { <svg viewBox="0 0 20 12"><path d="M3 1v10l7-5zM10 1v10l7-5z"/></svg> }
+      }
+    </button>
+  }
+  <div class="undo-frame"><span>UNDO/<br>REDO</span></div>
+  <button class="btn pill c" [class.lit]="seq.undoState() === 'redo'" style="left: 678px; top: 372px"
+          aria-label="Undo / redo" (click)="unit.pressUndo()"></button>
+
+  <!-- ================= DISPLAY ================= -->
+  <div class="display-bezel">
+    <su-display class="display" [model]="unit.display()" />
+  </div>
+  @for (d of [['MEASURE', 440, 'measure'], ['BPM', 476, 'bpm'], ['NOTE', 512, 'note']]; track d[0]) {
+    <div class="disp-label" [style.top.px]="+d[1] - 6">{{ d[0] }}</div>
+    <button class="btn black c" style="left: 757px" [style.top.px]="d[1]" [attr.aria-label]="d[0]"
+            [class.lit]="unit.blink() === d[2]" (click)="unit.pressBlink($any(d[2]))"></button>
+  }
+
+  <!-- ================= SAMPLING / MASTER ================= -->
+<img class="yamaha" src="yamaha-logo.svg" alt="YAMAHA" draggable="false" />
+  <div class="caption" style="left: 720px; top: 49px; font-size: 9px">SAMPLING</div>
+  <div class="sampling-box">
+    <span class="lbl" style="left: 6px">STANDBY/<br>START/STOP</span>
+    <span class="lbl" style="left: 84px; top: 11px">ANALOG LEVEL</span>
+  </div>
+  <button class="sample-btn" [class.standby]="unit.sampling() && unit.sampling()!.step !== 'recording'"
+          [class.recording]="unit.sampling()?.step === 'recording'" aria-label="Sampling standby / start / stop"
+          (click)="unit.pressSampling()"><span class="led"></span></button>
+  <su-knob class="at" style="left: 824px; top: 118px" color="dark-red" [size]="40" [scale]="true"
+           [value]="analogLevel()" (valueChange)="analogLevelChange($event)" (reset)="analogLevelChange(0.7)" />
+  <div class="caption c" style="left: 905px; top: 72px; text-align: center; font-size: 7.5px">MASTER<br>VOLUME</div>
+  <su-knob class="at" style="left: 905px; top: 118px" color="dark" [size]="40" [scale]="true"
+           [value]="engine.masterVolumeLevel()" (valueChange)="engine.setMasterVolume($event)"
+           (reset)="engine.setMasterVolume(0.8)" />
+
+  <div class="label c" style="left: 905px; top: 216px; font-size: 7.5px">BPM COUNTER</div>
+  <button class="btn black c big" style="left: 905px; top: 240px" aria-label="BPM counter (tap tempo)"
+          (pointerdown)="unit.tapTempo()"></button>
+
+  <!-- ================= DATA ENTRY ================= -->
+  <div class="data-box"></div>
+  <div class="arrow-tab c" style="left: 757px; top: 172px">&#9664;</div>
+  <div class="arrow-tab c" style="left: 806px; top: 172px">&#9654;</div>
+  <button class="btn black c big" style="left: 757px; top: 190px" aria-label="Cursor left" (click)="unit.pressCursor(-1)"></button>
+  <button class="btn black c big" style="left: 806px; top: 190px" aria-label="Cursor right" (click)="unit.pressCursor(1)"></button>
+  <su-jog-wheel class="at" style="left: 782px; top: 281px" (turn)="unit.dial($event)" />
+  <div class="label c" style="left: 757px; top: 356px">CANCEL</div>
+  <div class="label c" style="left: 806px; top: 356px">OK</div>
+  <button class="btn black c big" style="left: 757px; top: 373px" aria-label="Cancel" (click)="unit.pressCancel()"></button>
+  <button class="btn black c big" style="left: 806px; top: 373px" aria-label="OK" (click)="unit.pressOk()"></button>
+
+  <!-- ================= RIBBON ================= -->
+  <div class="ribbon-housing">
+    <div class="ribbon" (pointerdown)="ribbonMove($event, true)" (pointermove)="ribbonMove($event)"
+         (pointerup)="ribbonUp()" (pointercancel)="ribbonUp()">
+      @if (ribbonTouch() !== null) {
+        <div class="ribbon-touch" [style.bottom.%]="ribbonTouch()! * 100"></div>
+      }
+    </div>
+  </div>
+  <div class="dots-v" style="left: 897px; top: 548px"></div>
+  <div class="dot-sq" style="left: 880px; top: 580px"></div>
+  <button class="btn black c big" style="left: 905px; top: 585px" aria-label="Ribbon track"
+          [class.lit]="unit.ribbonTrackHeld()" (pointerdown)="unit.ribbonTrackHeld.set(true)"
+          (pointerup)="unit.ribbonTrackHeld.set(false)" (pointerleave)="unit.ribbonTrackHeld.set(false)"></button>
+  <div class="label" style="left: 922px; top: 594px; text-align: left; line-height: 1.1">RIBBON<br>TRACK</div>
+
+  <!-- ================= KNOBS ================= -->
+  <div class="dots-l"></div>
+  @for (x of knobX; track x; let i = $index) {
+    <div class="slot" [style.left.px]="x"></div>
+    <su-knob class="at" [style.left.px]="x" style="top: 583px" [color]="knobColors[i]" [size]="30"
+             [value]="unit.knobPositions()[i]" (valueChange)="unit.turnKnob(i, $event)" (reset)="unit.resetKnob(i)" />
+  }
+
+  <!-- ================= PADS ================= -->
+  @for (b of trackBank; track b.y; let i = $index) {
+    <div class="bank-num" [style.top.px]="b.y - 7">{{ i + 1 }}</div>
+    <button class="sq-btn" [class]="b.color" [class.lit]="unit.bank() === i" style="left: 85px"
+            [style.top.px]="b.y - 7" [attr.aria-label]="'Track bank ' + (i + 1)" (click)="unit.selectBank(i)"></button>
+  }
+  <div class="label" style="left: 72px; top: 794px; font-size: 8px">TRACK BANK</div>
+
+  @for (p of pads; track $index; let i = $index) {
+    <button class="pad" [class]="p[4]" [class.down]="unit.held().has(i)" [class.muted]="mutedPads()[i]"
+            [class.empty]="emptyPads()[i]"
+            [class.selected]="unit.padTracks()[i] === unit.lastTrack()"
+            [style.left.px]="p[0]" [style.top.px]="p[1]" [style.width.px]="p[2]" [style.height.px]="p[3]"
+            [attr.aria-label]="'Pad ' + (i + 1)"
+            (pointerdown)="padPointer(i, $event)" (pointerup)="unit.padUp(i)" (pointercancel)="unit.padUp(i)"
+            (contextmenu)="$event.preventDefault()"></button>
+  }
+  @for (g of padGroups; track g[0]) {
+    <div class="pad-group" [style.left.px]="g[1]" [style.width.px]="g[2] - g[1]">{{ g[0] }}</div>
+  }
+
+  <div class="pf-bracket"></div>
+  @for (f of padFunctions; track f.fn) {
+    <button class="sq-btn" [class]="f.color" style="left: 882px" [style.top.px]="f.y - 7" [attr.aria-label]="f.label"
+            [class.lit]="unit.screen() === 'function' && (f.fn === 'roll' ? unit.rollHeld() : !unit.rollHeld() && unit.padFn() === f.fn)"
+            (pointerdown)="f.fn === 'roll' ? unit.setRollHeld(true) : unit.selectPadFn(f.fn)"
+            (pointerup)="f.fn === 'roll' && unit.setRollHeld(false)"
+            (pointerleave)="f.fn === 'roll' && unit.rollHeld() && unit.setRollHeld(false)"></button>
+    <div class="label pf-label" [style.top.px]="f.y - 6">{{ f.label }}</div>
+  }
+  <div class="label" style="left: 868px; top: 796px; font-size: 8px">PAD FUNCTION</div>
+  <div class="phones">PHONES</div>
+</div>
+</div>

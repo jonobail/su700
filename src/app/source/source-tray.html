@@ -1,0 +1,53 @@
+<div class="tray" [class.drag]="dragging()">
+  <div class="col inputs">
+    <div class="title">AUDIO IN <span>SOURCE</span></div>
+    <form class="yt" (submit)="$event.preventDefault(); fetchYouTube()">
+      <input type="url" placeholder="Paste a YouTube link…" [value]="ytUrl()"
+             (input)="ytUrl.set($any($event.target).value)" [disabled]="!!loader.busy()" />
+      <button type="submit" [disabled]="!ytUrl().trim() || !!loader.busy()">FETCH</button>
+    </form>
+    <label class="upload" [class.disabled]="!!loader.busy()">
+      <input #file type="file" accept="audio/*,video/*" multiple (change)="pick(file)" />
+      UPLOAD AUDIO <small>or drop files anywhere</small>
+    </label>
+    <div class="status" [class.err]="loader.error()">
+      {{ loader.error() ?? loader.busy() ?? (engine.source() ? 'LOADED: ' + engine.source()!.name : 'NO SOURCE') }}
+    </div>
+  </div>
+
+  <div class="col player">
+    <div class="wave-wrap" (click)="seek($event)">
+      <canvas #wave width="1200" height="120"></canvas>
+      @if (!engine.source()) {
+        <div class="empty">Load a source and press ▶ PLAY to feed AUDIO IN — then sample it with STANDBY/START/STOP, or IMPORT it straight onto the selected track.</div>
+      }
+    </div>
+    <div class="transport">
+      <button (click)="engine.sourcePlaying() ? engine.stopSource() : engine.playSource()"
+              [disabled]="!engine.source()">{{ engine.sourcePlaying() ? '■ STOP' : '▶ PLAY' }}</button>
+      <button (click)="engine.stopSource(false); engine.seekSource(0)" [disabled]="!engine.source()">|◀ TOP</button>
+      <label class="loop"><input type="checkbox" [checked]="engine.sourceLoop()"
+             (change)="engine.sourceLoop.set($any($event.target).checked)" /> LOOP</label>
+      <button (click)="importToTrack()" [disabled]="!engine.source() || unit.lastTrack() >= 40"
+              title="Put the whole source on the last-selected track">IMPORT → {{ targetLabel() }}</button>
+      <span class="time">{{ fmt(engine.sourcePosition()) }} / {{ fmt(duration()) }}</span>
+    </div>
+  </div>
+
+  <div class="col library">
+    <div class="title">LIBRARY <span>{{ store.sources().length }}</span></div>
+    <ul>
+      @for (s of store.sources(); track s.id) {
+        <li [class.current]="engine.source()?.id === s.id">
+          <button class="name" (click)="loader.select(s)" [title]="s.url ?? s.name">
+            <i [class]="s.origin">{{ s.origin === 'youtube' ? 'YT' : 'FILE' }}</i>{{ s.name }}
+          </button>
+          <span class="size">{{ fmtSize(s.size) }}</span>
+          <button class="del" (click)="loader.remove(s)" [attr.aria-label]="'Delete ' + s.name">✕</button>
+        </li>
+      } @empty {
+        <li class="none">Nothing stored yet.</li>
+      }
+    </ul>
+  </div>
+</div>
