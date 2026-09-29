@@ -4,7 +4,7 @@ A browser emulation of the Yamaha SU700 Sampling Unit (1999), built with Angular
 audio comes from an uploaded file or a short clip sampled from a YouTube video, instead of the
 analog inputs.
 
-**Live demo:** _coming soon_ <!-- TODO: https://jonobail.github.io/su700/ once Pages is enabled -->
+**Live demo:** https://jonobail.github.io/su700/
 
 ## YouTube sampling in the demo
 
