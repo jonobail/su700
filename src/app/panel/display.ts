@@ -11,6 +11,10 @@ const WIDTH = 12;
 /** DSEG fonts use "!" as a full-width blank; a plain space is narrow. */
 const seg = (s: string) => s.toUpperCase().slice(0, WIDTH).padEnd(WIDTH, ' ').replace(/ /g, '!');
 
+/** A line cut around the characters that flash (a cursor or selected field). */
+const split = (s: string, r?: [number, number]): [string, string, string] =>
+  r ? [s.slice(0, r[0]), s.slice(r[0], r[1]), s.slice(r[1])] : [s, '', ''];
+
 const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LOOP RESTART' } as const;
 
 /** The fluorescent (VFD) display window. */
@@ -36,10 +40,12 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
       <div class="main">
         <div class="left">
           <div class="alpha" [class.blink]="m.blinkTop">
-            <span class="ghost">{{ ghost }}</span><span class="lit">{{ line1() }}</span>
+            @let l1 = line1();
+            <span class="ghost">{{ ghost }}</span><span class="lit">{{ l1[0] }}<span class="flash">{{ l1[1] }}</span>{{ l1[2] }}</span>
           </div>
-          <div class="alpha small2">
-            <span class="ghost">{{ ghost }}</span><span class="lit">{{ line2() }}</span>
+          <div class="alpha small2" [class.blink]="m.blinkValue">
+            @let l2 = line2();
+            <span class="ghost">{{ ghost }}</span><span class="lit">{{ l2[0] }}<span class="flash">{{ l2[1] }}</span>{{ l2[2] }}</span>
           </div>
 
           @if (m.input; as lr) {
@@ -60,8 +66,8 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
                   @for (s of segs; track s) {
                     <i [class.on]="lit(c, s)"></i>
                   }
-                  @if (c.value === null && c.hasSample) {
-                    <u></u>
+                  @if (c.value === null && (c.hasSample || c.hasSeq)) {
+                    <u [class.seq]="c.hasSeq" [class.nosample]="!c.hasSample"></u>
                   }
                 </div>
               }
@@ -115,7 +121,7 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
     .num { font: 17px DSEG7; }
     .num .lit { color: #b8fff4; }
     .note { font: 700 7px/1 Arial, sans-serif; color: var(--cyan); min-height: 7px; letter-spacing: .5px; }
-    .blink .lit, .note.blink { animation: blink .8s steps(2) infinite; }
+    .blink .lit, .note.blink, .flash { animation: blink .8s steps(2) infinite; }
     @keyframes blink { 50% { opacity: .15; } }
 
     .meters { display: flex; gap: 4px; margin-top: auto; }
@@ -132,6 +138,10 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
     .meter i.on { opacity: 1; box-shadow: 0 0 4px currentColor; }
     .meter u { position: absolute; left: 3px; right: 3px; top: 50%; height: 5px; margin-top: -2.5px;
       border-top: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; }
+    /* Sample plus sequence data: six centre bars instead of two (p.244). */
+    .meter u.seq { height: 17px; margin-top: -8.5px;
+      background: repeating-linear-gradient(currentColor 0 1.5px, transparent 1.5px 4.2px); border: 0; }
+    .meter u.seq.nosample { opacity: .5; }
     .meter.orange { color: #ffae3d; }
     .meter.white  { color: #dcfff8; }
     .meter.blue   { color: #6aa4ff; }
@@ -154,8 +164,8 @@ export class Display {
   protected readonly padFns = ['PLAY', 'ON/MUTE', 'LOOP RESTART'];
   protected readonly padLabel = PAD_FN_LABEL;
   protected readonly ghost = '~'.repeat(WIDTH);
-  protected readonly line1 = computed(() => seg(this.model().top));
-  protected readonly line2 = computed(() => seg(this.model().value));
+  protected readonly line1 = computed(() => split(seg(this.model().top), this.model().topRange));
+  protected readonly line2 = computed(() => split(seg(this.model().value), this.model().valueRange));
 
   protected pad(s: string, n: number): string {
     return s.padStart(n, '!');

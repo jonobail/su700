@@ -37,24 +37,25 @@ sampler, just as the rear-panel inputs would.
 | KNOB RESET (hold + pad), NOTE DEL (hold + pad during REC) | 220–221 | |
 | Ribbon: RIBBON TRACK hold + pad; SCRATCH (factory default) or a knob function | 172–173, 302 | |
 | MASTER VOLUME, ANALOG LEVEL | 17 | |
+| Jobs framework: group → job selector, dial / cursor / OK / CANCEL levels, job-flow memory, other controls locked | 224–227 | `jobs.ts` |
+| TRACK SET: MAIN (dial or knob/pad-function keys), FILTER TYPE, NOTE ASSIGN, SETUP (BPM TRACKING, LOOP LENGTH with implied BPM and COMPOSED LOOP minimum, LFO WAVE) | 231–240 | OUTPUT TO hidden (needs AIEB1) |
+| SAMPLE: START / END POINT (8-digit, cursor sets the increment, zero-cross snapping, pad to audition), PROCESS (TRIM, REVERSE, NORMALIZE 100–200%, FREQ. CONVERT, BIT CONVERT, STEREO TO MONO L/R/L+R/L-R, FINISHED → OK keeps / CANCEL restores), DELETE with ARE YOU SURE? | 259–272 | waveform maths in `core/wave.ts` (tested) |
+| SYSTEM SETUP: METRONOME (CLICK OFF / REC / REC/PLAY), COUNTDOWN, REC MODE, PAD SENS, AUDIO IN (LINE / MIC / OFF), RIBBON FUNCTION | 298–303 | kept in localStorage, as the unit keeps them through power-off; METRONOME OUT fixed at STEREO |
+| Metronome click, accented downbeat, running through the countdown | 298–299 | |
+| SONG: NAME (cursor, dial characters, NAME INSERT/DELETE, NAME EXISTS), COPY (OVERWRITE?, [COPYSONG] name), INIT, MTC OFFSET (stored; needs MIDI sync to matter) | 227–230 | `jobs-song.ts`; default song names are SONGxx |
+| TRACK EDIT: TRACK COPY, TRACK INIT, EVENT COPY (same type, OVERWRITE?), EVENT INIT | 241–245 | meters show sample / sequence-data bars while selecting (p.244) |
+| EVENT EDIT: LOCATION & VALUE (notes: location / velocity / gate within neighbours, REW/FF to step, JOB key to delete, CANCEL restores; MUTE, ROLL pairs, LOOP RESTART, SCENE deletion), NOTE CLEAR, EVENT CLEAR (type by dial or key, measure range), MEASURES (ADD with 1/4–4/4 meter, DELETE, COPY up to M999) | 246–258 | `jobs-edit.ts`, `core/edit.ts` (tested); meter map in `core/model.ts` |
 
 ## To do
 
-1. **Jobs framework** (group selector → job selector → dial / cursor / OK / CANCEL levels, p.224–227),
-   then jobs in rough priority order:
-   - TRACK SET: MAIN, FILTER TYPE, NOTE ASSIGN, SETUP (BPM TRACKING, LOOP LENGTH, LFO WAVE) — p.231–240
-   - SAMPLE: START POINT, END POINT, PROCESS (TRIM, REVERSE, NORMALIZE, FREQ/BIT CONVERT, STEREO→MONO), DELETE — p.259–271
-   - SYSTEM SETUP: METRONOME, COUNTDOWN, REC MODE, PAD SENS, RIBBON FUNCTION — p.298–303
-   - TRACK EDIT: TRACK COPY/INIT, EVENT COPY/INIT — p.241–245
-   - EVENT EDIT: LOCATION & VALUE, NOTE CLEAR, EVENT CLEAR, MEASURES — p.246–258
-   - SONG: NAME (with NAME INSERT/DELETE), COPY, INIT — p.227–230
+1. **Remaining jobs**, in rough priority order:
    - RESAMPLE: TRACK, SEQ (offline render) — p.272–280
    - DISK: SAVE / LOAD volumes and samples → IndexedDB volumes + AIFF/WAV export — p.281–297
-   - SYSTEM MIDI via Web MIDI (sync, channels, control numbers) — p.303–308, 345–348
+   - SYSTEM MIDI via Web MIDI (sync, channels, control numbers; makes MTC OFFSET useful) — p.303–308, 345–348; SYSTEM MEMORY
+   - Ribbon SCRATCH isn't recorded as an event yet, so EVENT CLEAR has no SCRATCH type (p.252)
 2. **Effects**: 3 effect blocks, 43 effect types, system vs insertion, CLEAR 1–3 / SETUP 1–3,
    EF2/EF3 sends, effect resolution — ch. 7, p.214–219, 333–344.
-3. Metronome click.
-4. Exact QUANTIZE and ROLL note-value lists (the manual shows them as note glyphs the text
+3. Exact QUANTIZE and ROLL note-value lists (the manual shows them as note glyphs the text
    extract lost; check the PDF pages 170 and 176).
-5. Persist songs between sessions (the hardware forgets on power-off; DISK SAVE should be the
+4. Persist songs between sessions (the hardware forgets on power-off; DISK SAVE should be the
    authentic path, auto-save optional).

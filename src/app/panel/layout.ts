@@ -1,5 +1,5 @@
 import { KnobFn } from '../core/knob-functions';
-import { JobGroup } from '../unit-controller';
+import { JobGroup } from '../jobs';
 
 /*
  * Faceplate geometry, in "panel units" measured off the reference photo (1000 × 871).

@@ -12,7 +12,8 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2023",
-    "module": "preserve"
+    "module": "preserve",
+    "rewriteRelativeImportExtensions": true
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

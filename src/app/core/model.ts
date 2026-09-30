@@ -19,6 +19,55 @@ export const PPQ = 96;
 export const TICKS_PER_MEASURE = PPQ * 4;
 export const BPM_MIN = 40;
 export const BPM_MAX = 299.9;
+export const MAX_MEASURES = 999;
+/** The manual counts 480 clocks per beat (p.246); the sequencer runs at PPQ. */
+export const CLOCKS_PER_TICK = 480 / PPQ;
+
+// ---------------------------------------------------------------------------
+// Meter map. EVENT EDIT | ADD MEASURES can insert 1/4–4/4 measures (p.253); `meters[m - 1]` is the
+// beat count of measure m, and measures past the end of the list are 4/4.
+
+export const measureTicks = (meters: readonly number[], m: number) => (meters[m - 1] ?? 4) * PPQ;
+
+/** First tick of measure m (1-based). */
+export function measureStart(meters: readonly number[], m: number): number {
+  const listed = Math.min(m - 1, meters.length);
+  let t = 0;
+  for (let i = 0; i < listed; i++) t += meters[i] * PPQ;
+  return t + Math.max(0, m - 1 - meters.length) * TICKS_PER_MEASURE;
+}
+
+export interface Location {
+  measure: number;
+  beat: number;
+  /** Ticks into the beat. */
+  tick: number;
+}
+
+/** Measure / beat / tick for a song position. The REC countdown (negative ticks) counts in 4/4. */
+export function locate(meters: readonly number[], tick: number): Location {
+  if (tick < 0) {
+    const inBar = ((tick % TICKS_PER_MEASURE) + TICKS_PER_MEASURE) % TICKS_PER_MEASURE;
+    return { measure: Math.floor(tick / TICKS_PER_MEASURE), beat: Math.floor(inBar / PPQ) + 1, tick: inBar % PPQ };
+  }
+  let m = 1;
+  let start = 0;
+  for (; m <= meters.length; m++) {
+    const len = meters[m - 1] * PPQ;
+    if (tick < start + len) break;
+    start += len;
+  }
+  if (m > meters.length) {
+    const extra = Math.floor((tick - start) / TICKS_PER_MEASURE);
+    m += extra;
+    start += extra * TICKS_PER_MEASURE;
+  }
+  const into = tick - start;
+  return { measure: m, beat: Math.floor(into / PPQ) + 1, tick: into % PPQ };
+}
+
+/** Tick for a measure / beat / tick location. */
+export const tickOf = (meters: readonly number[], l: Location) => measureStart(meters, l.measure) + (l.beat - 1) * PPQ + l.tick;
 
 export type TrackKind = 'loop' | 'composed' | 'free' | 'audioIn' | 'master';
 export type PadFn = 'play' | 'mute' | 'roll' | 'restart';
@@ -117,4 +166,24 @@ export interface Scene {
   knobs: Record<number, Record<string, number>>;
   mutes: Record<number, boolean>;
   grooveRes: Record<number, number>;
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Pick a loop length (beats) for a LOOP-track sample. Musically "round" lengths are preferred
+ * when their implied tempo is near the song tempo; otherwise the closest implied tempo wins.
+ * Returns null when no length gives a tempo within 40–299.9 (CANNOT FIND LOOP).
+ */
+export function fitLoop(seconds: number, bpm: number): number | null {
+  const implied = (beats: number) => (60 * beats) / seconds;
+  const valid = (beats: number) => implied(beats) >= BPM_MIN && implied(beats) <= BPM_MAX;
+  const near = (beats: number) => Math.abs(Math.log(implied(beats) / bpm)) < Math.log(1.2);
+  const preferred = [4, 8, 2, 16, 1, 32, 64, 128].find((b) => valid(b) && near(b));
+  if (preferred) return preferred;
+  let best: number | null = null;
+  for (let beats = 1; beats <= 128; beats++) {
+    if (valid(beats) && (best === null || Math.abs(implied(beats) - bpm) < Math.abs(implied(best) - bpm))) best = beats;
+  }
+  return best;
 }

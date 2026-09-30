@@ -3,7 +3,7 @@ import { AudioEngine, Voice, attackSec, releaseSec } from '../audio/audio-engine
 import { KNOB_FNS, KnobFn, clampKnob, supports } from './knob-functions';
 import {
   GROOVE_RES_VALUES, LoopNote, MASTER, PPQ, QUANTIZE_VALUES, SONG_COUNT, Scene, SeqEvent,
-  TICKS_PER_MEASURE, TRACK_COUNT, BPM_MAX, BPM_MIN, isSampleTrack,
+  TICKS_PER_MEASURE, TRACK_COUNT, BPM_MAX, BPM_MIN, isSampleTrack, locate,
 } from './model';
 import { Song, Track } from './song';
 
@@ -61,6 +61,8 @@ export class Sequencer {
   readonly recMode = signal<'replace' | 'overdub'>('replace');
   readonly countdown = signal(2);
   readonly padSens = signal(true);
+  /** SYSTEM | SETUP METRONOME CLICK (p.298). */
+  readonly metronome = signal<'off' | 'rec' | 'recPlay'>('off');
   readonly undoState = signal<'none' | 'undo' | 'redo'>('none');
 
   private anchorTime = 0;
@@ -101,6 +103,25 @@ export class Sequencer {
   selectSong(i: number): void {
     if (this.mode() !== 'playStandby') return;
     this.song.set(this.songAt(i));
+    this.undo = null;
+    this.undoState.set('none');
+    this.setPosition(0);
+    this.applyAll();
+  }
+
+  /** SONG | COPY (p.229): a full copy of song `from` becomes song `to`. */
+  copySong(from: number, to: number, name: string): void {
+    const dst = new Song(to + 1);
+    dst.copyFrom(this.songAt(from), name);
+    this.songs[to] = dst;
+  }
+
+  /** SONG | INIT (p.230): song `i` back to an empty song. */
+  initSong(i: number): void {
+    this.songs[i] = new Song(i + 1);
+    if (this.song().number !== i + 1) return;
+    for (let t = 0; t < TRACK_COUNT; t++) this.engine.killVoices(t);
+    this.song.set(this.songs[i]!);
     this.undo = null;
     this.undoState.set('none');
     this.setPosition(0);
@@ -236,6 +257,7 @@ export class Sequencer {
   }
 
   private killScheduled(): void {
+    this.engine.cancelClicks();
     for (let i = 0; i < TRACK_COUNT; i++) this.engine.killVoices(i, (v) => v.opts.source !== 'live');
   }
 
@@ -278,6 +300,7 @@ export class Sequencer {
   }
 
   private scheduleWindow(from: number, to: number): void {
+    this.scheduleClicks(from, to);
     if (to <= 0) return;
     from = Math.max(0, from);
     const song = this.song();
@@ -327,6 +350,16 @@ export class Sequencer {
         cur = r;
       }
       this.scheduleLoopTrack(t, cur, to);
+    }
+  }
+
+  /** Metronome: every beat, accented on the downbeat, from the start of the countdown (p.299). */
+  private scheduleClicks(from: number, to: number): void {
+    const m = this.metronome();
+    if (m === 'off' || (m === 'rec' && this.mode() !== 'rec')) return;
+    for (let b = Math.ceil(from / PPQ) * PPQ; b < to; b += PPQ) {
+      const at = locate(this.song().meters(), b);
+      this.engine.click(this.timeAt(b), at.beat === 1 && at.tick === 0);
     }
   }
 

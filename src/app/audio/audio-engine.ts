@@ -240,6 +240,11 @@ export class AudioEngine {
   private sourceOffset = 0;
   /** ANALOG LEVEL: input trim ahead of both the AUDIO IN strip and the sampler. */
   private readonly inputTrim: GainNode;
+  private inputLevel = 0.7;
+  /** SYSTEM | SETUP AUDIO IN (p.302). MIC adds preamp gain; OFF closes the AUDIO IN track only. */
+  readonly audioInSource = signal<'LINE' | 'MIC' | 'OFF'>('LINE');
+  private readonly audioInGate: GainNode;
+  private readonly clicks = new Set<OscillatorNode>();
   private readonly inputMeters: [AnalyserNode, AnalyserNode];
   private readonly meterBuf = new Float32Array(1024);
 
@@ -256,7 +261,8 @@ export class AudioEngine {
     this.setMasterVolume(this.masterVolumeLevel());
 
     this.inputTrim = this.ctx.createGain();
-    this.inputTrim.connect(this.strips[AUDIO_IN].input);
+    this.audioInGate = this.ctx.createGain();
+    this.inputTrim.connect(this.audioInGate).connect(this.strips[AUDIO_IN].input);
     const split = this.ctx.createChannelSplitter(2);
     this.inputTrim.connect(split);
     this.inputMeters = [this.ctx.createAnalyser(), this.ctx.createAnalyser()];
@@ -307,7 +313,46 @@ export class AudioEngine {
   }
 
   setInputLevel(v: number): void {
-    this.inputTrim.gain.setTargetAtTime(v * v * 2, this.ctx.currentTime, 0.01);
+    this.inputLevel = v;
+    const preamp = this.audioInSource() === 'MIC' ? 4 : 1;
+    this.inputTrim.gain.setTargetAtTime(v * v * 2 * preamp, this.ctx.currentTime, 0.01);
+  }
+
+  setAudioInSource(src: 'LINE' | 'MIC' | 'OFF'): void {
+    this.audioInSource.set(src);
+    this.audioInGate.gain.setTargetAtTime(src === 'OFF' ? 0 : 1, this.ctx.currentTime, 0.01);
+    this.setInputLevel(this.inputLevel);
+  }
+
+  /** Metronome click, straight to the stereo out (SYSTEM | SETUP METRONOME OUT=STEREO). */
+  click(when: number, accent: boolean): void {
+    const osc = this.ctx.createOscillator();
+    const env = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = accent ? 1760 : 1320;
+    env.gain.setValueAtTime(0.0001, when);
+    env.gain.exponentialRampToValueAtTime(accent ? 0.3 : 0.18, when + 0.001);
+    env.gain.exponentialRampToValueAtTime(0.0001, when + 0.045);
+    osc.connect(env).connect(this.masterVolume);
+    osc.start(when);
+    osc.stop(when + 0.05);
+    this.clicks.add(osc);
+    osc.onended = () => {
+      this.clicks.delete(osc);
+      env.disconnect();
+    };
+  }
+
+  /** Drop clicks scheduled ahead (stop, locate). */
+  cancelClicks(): void {
+    for (const c of this.clicks) {
+      try {
+        c.stop();
+      } catch {
+        /* not started yet */
+      }
+    }
+    this.clicks.clear();
   }
 
   /** Peak input level per channel (L, R), 0..1+. */

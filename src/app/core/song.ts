@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import { KnobFn, defaultKnobs } from './knob-functions';
+import { KnobFn, defaultKnobs, supports } from './knob-functions';
 import {
   BpmTracking, FilterType, LfoWave, LoopNote, MainPadFn, NoteAssign, SCENE_COUNT, Sample, Scene, SeqEvent,
   TRACK_COUNT, TrackKind, trackKind,
@@ -56,21 +56,77 @@ export class Track {
     this.refBpm.set(120);
     this.loopNotes.set([]);
   }
+
+  /**
+   * TRACK EDIT | TRACK COPY (p.241): the sample and its points, knob settings, mute, and the
+   * TRACK SET settings. BPM TRACKING only carries over between tracks of the same type.
+   */
+  copyFrom(src: Track): void {
+    this.sample.set(src.sample());
+    this.knobs.set({ ...src.knobs() });
+    this.muted.set(src.muted());
+    this.mainKnob.set(supports(src.mainKnob(), this.kind) ? src.mainKnob() : 'level');
+    this.mainPad.set(src.mainPad());
+    this.filterType.set(src.filterType());
+    this.noteAssign.set(src.noteAssign());
+    this.lfoWave.set(src.lfoWave());
+    this.grooveRes.set(src.grooveRes());
+    this.refBpm.set(src.refBpm());
+    if (src.kind === this.kind) {
+      this.bpmTracking.set(src.bpmTracking());
+      this.loopLength.set(src.loopLength());
+    }
+  }
+
+  /** Everything, including the COMPOSED LOOP phrase (SONG | COPY). */
+  cloneFrom(src: Track): void {
+    this.copyFrom(src);
+    this.bpmTracking.set(src.bpmTracking());
+    this.loopLength.set(src.loopLength());
+    this.loopNotes.set(src.loopNotes().map((n) => ({ ...n })));
+  }
 }
 
+export const defaultSongName = (number: number) => `SONG${String(number).padStart(2, '0')}`;
+
 export class Song {
-  readonly name = signal('NEW SONG');
+  /** Up to eight characters; default SONGxx (p.228). */
+  readonly name: ReturnType<typeof signal<string>>;
   readonly tracks = Array.from({ length: TRACK_COUNT }, (_, i) => new Track(i));
   /** Recorded sequence events, kept sorted by tick. */
   readonly events = signal<SeqEvent[]>([]);
   readonly scenes = signal<(Scene | null)[]>(new Array(SCENE_COUNT).fill(null));
   readonly markers = signal<(number | null)[]>(new Array(SCENE_COUNT).fill(null));
   readonly bpm = signal(120);
+  /** Beats per measure for measures added with a meter (see `measureStart`). */
+  readonly meters = signal<number[]>([]);
+  /** SONG | MTC OFFSET: hours, minutes, seconds, frames (p.230). */
+  readonly mtcOffset = signal<[number, number, number, number]>([0, 0, 0, 0]);
 
-  constructor(readonly number: number) {}
+  constructor(readonly number: number) {
+    this.name = signal(defaultSongName(number));
+  }
 
-  /** Last tick that holds any data, used to size the song. */
+  /** Whether the song holds anything worth an OVERWRITE? prompt. */
   isEmpty(): boolean {
-    return this.events().length === 0 && this.tracks.every((t) => !t.sample());
+    return this.events().length === 0 && this.tracks.every((t) => !t.sample() && !t.loopNotes().length) &&
+      this.scenes().every((x) => !x) && this.markers().every((x) => x === null);
+  }
+
+  /** Recorded sequence data on a track (the six centre bars of its meter, p.244). */
+  hasSequence(i: number): boolean {
+    return this.tracks[i].loopNotes().length > 0 || this.events().some((e) => e.track === i);
+  }
+
+  /** SONG | COPY: all of the song's data (p.229). */
+  copyFrom(src: Song, name: string): void {
+    this.name.set(name);
+    this.tracks.forEach((t, i) => t.cloneFrom(src.tracks[i]));
+    this.events.set(src.events().map((e) => ({ ...e })));
+    this.scenes.set(src.scenes().map((sc) => sc && structuredClone(sc)));
+    this.markers.set([...src.markers()]);
+    this.bpm.set(src.bpm());
+    this.meters.set([...src.meters()]);
+    this.mtcOffset.set([...src.mtcOffset()]);
   }
 }

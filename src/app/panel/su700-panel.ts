@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { JobGroup, UnitController } from '../unit-controller';
+import { JobGroup } from '../jobs';
+import { UnitController } from '../unit-controller';
 import { Display } from './display';
 import { JogWheel } from './jog-wheel';
 import { Knob } from './knob';
@@ -80,6 +81,8 @@ export class Su700Panel {
   /** Buttons that act while held use pointer down/up; the rest act on press. */
   protected knobFnDown(b: KnobFnButton): void {
     if (b.param) return this.unit.selectKnobFn(b.param);
+    if ((b.action === 'KNOB RESET' || b.action === 'NOTE DEL' || b.action === 'INSERT' || b.action === 'DELETE') &&
+      this.unit.pressJobKey(b.action)) return;
     switch (b.action) {
       case 'KNOB RESET': return this.unit.knobResetHeld.set(true);
       case 'NOTE DEL': return this.unit.noteDelHeld.set(true);
@@ -104,7 +107,7 @@ export class Su700Panel {
   protected gridPress(row: number): void {
     const g = this.unit.jobGroup();
     const col = g ? MODES.findIndex((x) => x.mode === g) : -1;
-    this.unit.pressJob(col >= 0 ? FUNCTION_GRID[row][col].replace(/-?\n/g, ' ') : '');
+    this.unit.pressJob(row, col >= 0 ? FUNCTION_GRID[row][col].replace(/-?\n/g, ' ') : '');
   }
 
   protected transportDown(id: (typeof TRANSPORT)[number]['id']): void {

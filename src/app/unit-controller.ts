@@ -1,21 +1,20 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
 import { KNOB_FNS, KnobFn, defaultKnobs, fromUnit, supports, toUnit } from './core/knob-functions';
 import {
   BPM_MAX, BPM_MIN, GROOVE_RES_VALUES, PADS_PER_BANK, PPQ, PadFn, QUANTIZE_VALUES,
-  ROLL_VALUES, SONG_COUNT, Sample, TICKS_PER_MEASURE, isSampleTrack, note, trackForPad, trackLabel,
+  ROLL_VALUES, SONG_COUNT, Sample, fitLoop, isSampleTrack, locate, note, trackForPad, trackLabel,
 } from './core/model';
 import { Sequencer } from './core/sequencer';
 import { Track } from './core/song';
+import { JOB_GROUP_LABEL, JobGroup, JobHost, Jobs, loadSystem, saveSystem } from './jobs';
+import {
+  EventClearJob, EventCopyJob, EventInitJob, LocationValueJob, MeasuresJob, NoteClearJob, TrackCopyJob, TrackInitJob,
+} from './jobs-edit';
+import { MtcOffsetJob, SongCopyJob, SongInitJob, SongNameJob } from './jobs-song';
 
 export type Screen = 'main' | 'function' | 'job' | 'sampling';
 export type Blink = 'measure' | 'bpm' | 'note' | null;
-export type JobGroup = 'song' | 'trackSet' | 'trackEdit' | 'eventEdit' | 'sample' | 'resample' | 'disk' | 'system';
-
-export const JOB_GROUP_LABEL: Record<JobGroup, string> = {
-  song: 'SONG', trackSet: 'TRACK SET', trackEdit: 'TRACK EDIT', eventEdit: 'EVENT EDIT',
-  sample: 'SAMPLE', resample: 'RESAMPLE', disk: 'DISK', system: 'SYSTEM',
-};
 
 type SampleRate = 44100 | 22050 | 11025;
 type ChannelMode = 'STEREO' | 'L+R' | 'MONO L' | 'MONO R';
@@ -36,6 +35,8 @@ export interface MeterCell {
   bracket: boolean;
   selected: boolean;
   hasSample: boolean;
+  /** Track holds sequence data (shown on track-selection job screens, p.244). */
+  hasSeq?: boolean;
 }
 
 export interface DisplayModel {
@@ -52,6 +53,9 @@ export interface DisplayModel {
   note: string;
   blink: Blink;
   blinkTop: boolean;
+  blinkValue: boolean;
+  topRange?: [number, number];
+  valueRange?: [number, number];
 }
 
 const HOLD_MS = 1500;
@@ -61,7 +65,7 @@ const HOLD_MS = 1500;
  * AudioEngine calls following the SU700 Owner's Manual.
  */
 @Injectable({ providedIn: 'root' })
-export class UnitController {
+export class UnitController implements JobHost {
   readonly engine = inject(AudioEngine);
   readonly seq = inject(Sequencer);
 
@@ -106,6 +110,12 @@ export class UnitController {
   private scratch: { track: number; pos: number; time: number } | null = null;
 
   readonly song = this.seq.song;
+  readonly jobs = new Jobs(this, (ctx) => ({
+    songName: new SongNameJob(ctx), songCopy: new SongCopyJob(ctx), songInit: new SongInitJob(ctx), mtcOffset: new MtcOffsetJob(ctx),
+    trackCopy: new TrackCopyJob(ctx), trackInit: new TrackInitJob(ctx), eventCopy: new EventCopyJob(ctx), eventInit: new EventInitJob(ctx),
+    locationValue: new LocationValueJob(ctx), noteClear: new NoteClearJob(ctx), eventClear: new EventClearJob(ctx),
+    measures: new MeasuresJob(ctx),
+  }));
 
   /** Tracks under the 12 knobs / pads for the current bank. */
   readonly padTracks = computed(() => Array.from({ length: 12 }, (_, p) => trackForPad(p, this.bank())));
@@ -127,6 +137,8 @@ export class UnitController {
   readonly display = computed<DisplayModel>(() => this.buildDisplay());
 
   constructor() {
+    loadSystem(this);
+    effect(() => saveSystem(this));
     const frame = () => {
       const s = this.sampling();
       if (s && (s.step === 'params' || s.step === 'recording')) {
@@ -163,7 +175,10 @@ export class UnitController {
 
   selectKnobFn(fn: KnobFn): void {
     if (this.screen() === 'sampling') return;
-    if (this.screen() === 'job') return; // TRACK SET | MAIN will consume these once jobs exist
+    if (this.screen() === 'job') {
+      this.jobs.knobFn(fn);
+      return;
+    }
     this.screen.set('function');
     this.knobFn.set(fn);
     this.lastFnKind = 'knob';
@@ -191,8 +206,11 @@ export class UnitController {
       }
       return;
     }
+    if (this.screen() === 'job') {
+      if (this.jobs.pad(i)) this.seq.noteOn(i, velocity); // SAMPLE jobs: listen while editing
+      return;
+    }
     this.lastTrack.set(i);
-    if (this.screen() === 'job') return;
 
     if (this.knobResetHeld()) {
       if (this.seq.mode() === 'play' || this.seq.mode() === 'playStandby') {
@@ -242,7 +260,11 @@ export class UnitController {
   }
 
   selectPadFn(fn: Exclude<PadFn, 'roll'>): void {
-    if (this.screen() === 'sampling' || this.screen() === 'job') return;
+    if (this.screen() === 'job') {
+      this.jobs.padFn(fn);
+      return;
+    }
+    if (this.screen() === 'sampling') return;
     this.screen.set('function');
     this.padFn.set(fn);
     this.lastFnKind = 'pad';
@@ -250,7 +272,11 @@ export class UnitController {
 
   /** ROLL works only while held; releasing returns to PLAY (p.167). */
   setRollHeld(down: boolean): void {
-    if (this.screen() === 'sampling' || this.screen() === 'job') return;
+    if (this.screen() === 'job') {
+      if (down) this.jobs.padFn('roll');
+      return;
+    }
+    if (this.screen() === 'sampling') return;
     this.rollHeld.set(down);
     if (down) this.screen.set('function');
     else this.padFn.set('play');
@@ -266,6 +292,7 @@ export class UnitController {
     } else if (isSampleTrack(this.lastTrack())) {
       this.lastTrack.set(b * PADS_PER_BANK + (this.lastTrack() % PADS_PER_BANK));
     }
+    if (this.screen() === 'job') this.jobs.bankChanged();
   }
 
   // =====================================================================
@@ -280,7 +307,7 @@ export class UnitController {
   dial(step: number): void {
     const s = this.sampling();
     if (s) return this.samplingDial(s, step);
-    if (this.screen() === 'job') return;
+    if (this.screen() === 'job') return this.jobs.dial(step);
 
     switch (this.blink()) {
       case 'measure':
@@ -318,7 +345,8 @@ export class UnitController {
       return;
     }
     if (this.screen() === 'job') {
-      this.exitJob();
+      if (this.jobs.job()) this.jobs.ok();
+      else this.leaveJob();
       return;
     }
     this.toMain();
@@ -329,7 +357,8 @@ export class UnitController {
     if (s) return void this.samplingCancel(s);
     this.pendingSong.set(null);
     if (this.screen() === 'job') {
-      this.exitJob();
+      if (this.jobs.job()) this.jobs.cancel();
+      else this.leaveJob();
       return;
     }
     if (this.seq.mode() === 'recStandby') this.seq.pressStop();
@@ -337,6 +366,7 @@ export class UnitController {
   }
 
   pressCursor(dir: -1 | 1): void {
+    if (this.screen() === 'job') return this.jobs.cursor(dir);
     const s = this.sampling();
     if (s?.step === 'params') this.sampling.set({ ...s, cursor: ((s.cursor + dir + 3) % 3) as 0 | 1 | 2 });
   }
@@ -347,7 +377,7 @@ export class UnitController {
   }
 
   // =====================================================================
-  // Jobs (group + job selector). Individual jobs are still to be built.
+  // Jobs (group + job selector); the jobs themselves live in jobs.ts.
 
   pressJobGroup(g: JobGroup): void {
     if (this.sampling()) return;
@@ -355,17 +385,29 @@ export class UnitController {
       this.show('STOP SEQ', 'FIRST');
       return;
     }
+    this.jobs.abort();
     this.jobGroup.set(g);
     this.screen.set('job');
     this.blink.set(null);
   }
 
-  pressJob(label: string): void {
-    if (this.screen() !== 'job' || !label) return;
-    this.show(label, 'NOT YET');
+  /** JOB / NAME keys below the knob functions while a job is open. Returns false outside jobs. */
+  pressJobKey(action: 'KNOB RESET' | 'NOTE DEL' | 'INSERT' | 'DELETE'): boolean {
+    if (this.screen() !== 'job') return false;
+    if (action === 'INSERT' || action === 'DELETE') this.jobs.nameKey(action === 'INSERT' ? 'insert' : 'delete');
+    else this.jobs.defaultKey();
+    return true;
   }
 
-  private exitJob(): void {
+  /** Job selector (row of the grid) within the current group. */
+  pressJob(row: number, label: string): void {
+    const g = this.jobGroup();
+    if (this.screen() !== 'job' || !g || !label) return;
+    if (!this.jobs.open(g, row)) this.show(label, 'NOT YET');
+  }
+
+  leaveJob(): void {
+    this.jobs.abort();
     this.jobGroup.set(null);
     this.toMain();
     this.seq.setPosition(0); // leaving job mode returns to 001:1 (p.146)
@@ -399,7 +441,11 @@ export class UnitController {
     const key = `scan${dir}`;
     clearInterval(this.holdTimers.get(key));
     this.holdTimers.delete(key);
-    if (!down || this.sampling() || this.screen() === 'job') return;
+    if (this.screen() === 'job') {
+      if (down) this.jobs.transport(dir); // LOCATION & VALUE steps through events
+      return;
+    }
+    if (!down || this.sampling()) return;
     this.seq.nudge(dir);
     this.holdTimers.set(key, setInterval(() => this.seq.nudge(dir), 90));
   }
@@ -413,6 +459,10 @@ export class UnitController {
   // Scenes / markers: tap to recall or jump, hold ~1.5 s to store.
 
   scenePress(n: number, down: boolean): void {
+    if (this.screen() === 'job') {
+      if (down) this.jobs.scene(n);
+      return;
+    }
     const key = `scene${n}`;
     if (down) {
       this.holdTimers.set(key, setTimeout(() => {
@@ -670,13 +720,12 @@ export class UnitController {
     const last = seq.track(this.lastTrack());
     const s = this.sampling();
     const pos = seq.position();
-    const measure = Math.floor(pos / TICKS_PER_MEASURE) + (pos < 0 ? 0 : 1);
-    const beat = Math.floor((((pos % TICKS_PER_MEASURE) + TICKS_PER_MEASURE) % TICKS_PER_MEASURE) / PPQ) + 1;
+    const { measure, beat } = locate(song.meters(), pos);
     const base: DisplayModel = {
       top: '', value: '', bank: this.bank(), rec: seq.mode() === 'rec' || seq.mode() === 'recStandby',
       padFn: null, meters: [], input: null, clip: performance.now() < this.clipUntil,
       measure: `${pos < 0 ? '-' : ''}${String(Math.abs(measure)).padStart(pos < 0 ? 2 : 3, '0')}:${beat}`,
-      bpm: (this.tapBpm() ?? seq.bpm).toFixed(1), note: '', blink: this.blink(), blinkTop: false,
+      bpm: (this.tapBpm() ?? seq.bpm).toFixed(1), note: '', blink: this.blink(), blinkTop: false, blinkValue: false,
     };
     if (this.tapBpm() !== null) base.blink = 'bpm';
 
@@ -721,7 +770,26 @@ export class UnitController {
     const f = this.flash();
     if (this.screen() === 'job') {
       const g = this.jobGroup();
-      return { ...base, top: f?.top ?? (g ? JOB_GROUP_LABEL[g] : ''), value: f?.value ?? 'SELECT JOB', meters: meterFor(null) };
+      if (!this.jobs.job()) {
+        return { ...base, top: f?.top ?? (g ? JOB_GROUP_LABEL[g] : ''), value: f?.value ?? 'SELECT JOB', meters: meterFor(null) };
+      }
+      const v = this.jobs.view();
+      const sel = v.track;
+      return {
+        ...base,
+        top: f?.top ?? v.top,
+        value: f?.value ?? v.value,
+        blinkTop: !f && !!v.blinkTop,
+        blinkValue: !f && !!v.blinkValue,
+        topRange: f ? undefined : v.topRange,
+        valueRange: f ? undefined : v.valueRange,
+        note: v.note ?? '',
+        bank: sel !== null && isSampleTrack(sel) ? Math.floor(sel / PADS_PER_BANK) : base.bank,
+        meters: tracks.map<MeterCell>((t) => ({
+          value: null, bipolar: false, bracket: t.index === sel, selected: t.index === sel, hasSample: !!t.sample(),
+          hasSeq: sel !== null && song.hasSequence(t.index),
+        })),
+      };
     }
 
     if (this.screen() === 'main') {
@@ -762,24 +830,6 @@ export class UnitController {
 }
 
 // ---------------------------------------------------------------------------
-
-/**
- * Pick a loop length (beats) for a LOOP-track sample. Musically "round" lengths are preferred
- * when their implied tempo is near the song tempo; otherwise the closest implied tempo wins.
- * Returns null when no length gives a tempo within 40–299.9 (CANNOT FIND LOOP).
- */
-export function fitLoop(seconds: number, bpm: number): number | null {
-  const implied = (beats: number) => (60 * beats) / seconds;
-  const valid = (beats: number) => implied(beats) >= BPM_MIN && implied(beats) <= BPM_MAX;
-  const near = (beats: number) => Math.abs(Math.log(implied(beats) / bpm)) < Math.log(1.2);
-  const preferred = [4, 8, 2, 16, 1, 32, 64, 128].find((b) => valid(b) && near(b));
-  if (preferred) return preferred;
-  let best: number | null = null;
-  for (let beats = 1; beats <= 128; beats++) {
-    if (valid(beats) && (best === null || Math.abs(implied(beats) - bpm) < Math.abs(implied(best) - bpm))) best = beats;
-  }
-  return best;
-}
 
 /** Apply the sampling parameters: rate (via offline resampling), bit depth and channel mode. */
 async function convert(raw: AudioBuffer, rate: SampleRate, bits: 16 | 8, mode: ChannelMode): Promise<AudioBuffer> {
