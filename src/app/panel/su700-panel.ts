@@ -5,7 +5,8 @@ import { Display } from './display';
 import { JogWheel } from './jog-wheel';
 import { Knob } from './knob';
 import {
-  FUNCTION_GRID, GRID_ROWS_Y, GRID_X, KNOB_COLORS, KNOB_FN_ROWS, KNOB_FN_TABS, KNOB_X, KnobFnButton,
+  FUNCTION_GRID, GRID_DIVIDERS_X, GRID_ROWS_Y, GRID_X, KNOB_COLORS, KNOB_FN_ROWS, KNOB_FN_SPINES,
+  KNOB_FN_TABS, KNOB_X, KnobFnButton,
   MODES, PADS, PAD_FUNCTIONS, PAD_GROUPS, PAD_KEYS, PANEL_H, PANEL_W, SCENES, TRACK_BANK, TRANSPORT,
 } from './layout';
 
@@ -39,9 +40,11 @@ export class Su700Panel {
   protected readonly H = PANEL_H;
   protected readonly knobFnRows = KNOB_FN_ROWS;
   protected readonly knobFnTabs = KNOB_FN_TABS;
+  protected readonly knobFnSpines = KNOB_FN_SPINES;
   protected readonly modes = MODES;
   protected readonly gridX = GRID_X;
   protected readonly gridRowsY = GRID_ROWS_Y;
+  protected readonly gridDividersX = GRID_DIVIDERS_X;
   protected readonly grid = FUNCTION_GRID;
   protected readonly scenes = SCENES;
   protected readonly transport = TRANSPORT;

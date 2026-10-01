@@ -8,8 +8,8 @@ const PALETTE: Record<KnobColor, [string, string, string]> = {
   white: ['#cfc8b2', '#e9e3cf', '#3a3830'],
   blue: ['#8d91ab', '#a6aac2', '#2c2e3a'],
   red: ['#c63a35', '#e14a42', '#3a1c1a'],
-  dark: ['#1b1c20', '#2a2c31', '#e9e9e6'],
-  'dark-red': ['#1b1c20', '#2a2c31', '#e5423a'],
+  dark: ['#1b1c20', '#2a2c31', '#cfcbc2'],
+  'dark-red': ['#1b1c20', '#2a2c31', '#e0786a'],
 };
 
 /** Serrated skirt outline: `teeth` ridges between radii r1 and r2 (viewBox units). */
@@ -24,8 +24,8 @@ function gear(teeth: number, r1: number, r2: number): string {
 }
 const SKIRT = gear(18, 34.5, 40.5);
 
-/** Tick marks for the scaled knobs (ANALOG LEVEL, MASTER VOLUME): -135°..135°. */
-const TICKS = Array.from({ length: 11 }, (_, i) => -135 + i * 27);
+/** Tick marks for the scaled knobs (ANALOG LEVEL, MASTER VOLUME): 21 ticks, -150°..150°. */
+const TICKS = Array.from({ length: 21 }, (_, i) => -150 + i * 15);
 
 
 
@@ -54,7 +54,9 @@ function capture(el: Element, id: number): void {
         <path [attr.d]="skirt" [attr.fill]="p[0]" class="skirt" />
         <circle r="29" [attr.fill]="p[1]" />
         <circle r="29" fill="url(#knob-sheen)" />
-        <line x1="0" y1="-10" x2="0" y2="-27" [attr.stroke]="p[2]" stroke-width="4" stroke-linecap="round" />
+        <!-- The scaled (panel-printed) knobs have a long indicator stripe running from centre to rim. -->
+        <line x1="0" [attr.y1]="scale() ? 4 : -10" x2="0" [attr.y2]="scale() ? -36 : -27" [attr.stroke]="p[2]"
+              stroke-width="4" stroke-linecap="round" />
       </g>
       <defs>
         <radialGradient id="knob-sheen" cx="40%" cy="35%" r="70%">

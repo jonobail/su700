@@ -45,6 +45,9 @@ export const KNOB_FN_ROWS: KnobFnRow[] = [
   { y: 526, buttons: [{ label: 'INSERT', x: C[0], action: 'INSERT', gray: true }, { label: 'DELETE', x: C[1], action: 'DELETE', gray: true }] },
 ];
 
+/** The white spine the tabs hang off: [top, bottom]. It breaks between EFFECT and EFFECT SETUP. */
+export const KNOB_FN_SPINES: [number, number][] = [[50, 393], [396, 536]];
+
 /** White section tabs down the far left: [label, top, bottom]. */
 export const KNOB_FN_TABS: [string, number, number][] = [
   ['SOUND', 50, 123], ['GROOVE', 127, 161], ['LFO', 165, 233], ['EQ', 237, 306],
@@ -61,6 +64,9 @@ export const MODES: { label: string; mode: JobGroup }[] = [
 ];
 
 export const GRID_ROWS_Y = [111, 148, 185, 222];
+
+/** Silkscreen cell dividers: midway between columns, plus the closing line at the right edge. */
+export const GRID_DIVIDERS_X = [...GRID_X.slice(1).map((x, i) => (GRID_X[i] + x) / 2), 700];
 
 /** Function grid text, [row][column]; '' = empty cell. */
 export const FUNCTION_GRID: string[][] = [
