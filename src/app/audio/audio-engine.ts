@@ -1,7 +1,9 @@
 import { Injectable, signal } from '@angular/core';
+import { EffectSetup, defaultEffects, isInsertion } from '../core/effects';
 import { EQ_HI_FREQS, EQ_LO_FREQS } from '../core/knob-functions';
 import { AUDIO_IN, LfoWave, MASTER, TRACK_COUNT } from '../core/model';
 import { Track } from '../core/song';
+import { EffectRack } from './effect-rack';
 
 // ---- Knob value → audio units ----
 // 127 is unity, so the MASTER default (127) is transparent and sample tracks (100) sit ~4 dB down.
@@ -228,6 +230,15 @@ export class AudioEngine {
   readonly ctx = new AudioContext({ latencyHint: 'interactive' });
   readonly strips: Strip[];
   private readonly masterVolume: GainNode;
+
+  // ---- Effects (ch. 7): three blocks fed by per-track sends ----
+  private readonly rack: EffectRack;
+  /** sends[track][block], post-fader. MASTER has none: it only scales insertion blocks. */
+  private readonly sends: GainNode[][];
+  private effects: EffectSetup = defaultEffects();
+  private effectBpm = 120;
+  /** Last EFFECT 1–3 knob values per track, so sends can be recomputed when the setup changes. */
+  private readonly effectLevels: number[][] = Array.from({ length: TRACK_COUNT }, () => [0, 0, 0]);
   readonly masterVolumeLevel = signal(0.8);
 
   // ---- AUDIO IN source (the uploaded / YouTube audio standing in for the analog inputs) ----
@@ -260,6 +271,19 @@ export class AudioEngine {
     master.output.connect(this.masterVolume).connect(this.ctx.destination);
     this.setMasterVolume(this.masterVolumeLevel());
 
+    // Effect returns go through the MASTER track like the tracks themselves.
+    this.rack = new EffectRack(this.ctx, master.input);
+    this.sends = this.strips.map((s, i) =>
+      this.rack.blocks.map((b) => {
+        const g = this.ctx.createGain();
+        g.gain.value = 0;
+        if (i !== MASTER) s.output.connect(g).connect(b.input);
+        return g;
+      }),
+    );
+    this.rack.configure(this.effects, this.effectBpm);
+    this.updateSends();
+
     this.inputTrim = this.ctx.createGain();
     this.audioInGate = this.ctx.createGain();
     this.inputTrim.connect(this.audioInGate).connect(this.strips[AUDIO_IN].input);
@@ -289,6 +313,38 @@ export class AudioEngine {
 
   applyTrack(t: Track): void {
     this.strips[t.index].apply(t);
+    const k = t.knobs();
+    const lv = this.effectLevels[t.index];
+    if (lv[0] !== k.effect1 || lv[1] !== k.effect2 || lv[2] !== k.effect3) {
+      this.effectLevels[t.index] = [k.effect1, k.effect2, k.effect3];
+      this.updateSends(t.index);
+    }
+  }
+
+  /** New effect assignments / parameters, or a new tempo for the synchronised effects. */
+  setEffects(setup: EffectSetup, bpm: number): void {
+    this.effects = setup;
+    this.effectBpm = bpm;
+    this.rack.configure(setup, bpm);
+    this.updateSends();
+  }
+
+  /**
+   * System effect: each track sends at its own EFFECT level. Insertion effect: connected tracks
+   * send at unity and the MASTER track's EFFECT level scales the whole block input (p.189–190).
+   */
+  private updateSends(only?: number): void {
+    const now = this.ctx.currentTime;
+    const gain = (v: number) => Math.pow(v / 127, 2);
+    this.effects.forEach((b, bi) => {
+      const ins = isInsertion(b);
+      this.rack.blocks[bi].input.gain.setTargetAtTime(ins ? gain(this.effectLevels[MASTER][bi]) : 1, now, 0.01);
+      for (let i = 0; i < TRACK_COUNT; i++) {
+        if (i === MASTER || (only !== undefined && only !== i && only !== MASTER)) continue;
+        const v = ins ? (b.connected.includes(i) ? 1 : 0) : gain(this.effectLevels[i][bi]);
+        this.sends[i][bi].gain.setTargetAtTime(v, now, 0.01);
+      }
+    });
   }
 
   setMuted(track: number, muted: boolean, when?: number): void {

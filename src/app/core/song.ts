@@ -1,4 +1,5 @@
 import { signal } from '@angular/core';
+import { EffectSetup, cloneEffects, defaultEffects } from './effects';
 import { KnobFn, defaultKnobs, supports } from './knob-functions';
 import {
   BpmTracking, FilterType, LfoWave, LoopNote, MainPadFn, NoteAssign, SCENE_COUNT, Sample, Scene, SeqEvent,
@@ -102,6 +103,8 @@ export class Song {
   readonly meters = signal<number[]>([]);
   /** SONG | MTC OFFSET: hours, minutes, seconds, frames (p.230). */
   readonly mtcOffset = signal<[number, number, number, number]>([0, 0, 0, 0]);
+  /** The three effect blocks (EFFECT SETUP); back to the defaults whenever the song is entered (p.187). */
+  readonly effects = signal<EffectSetup>(defaultEffects());
 
   constructor(readonly number: number) {
     this.name = signal(defaultSongName(number));
@@ -128,5 +131,6 @@ export class Song {
     this.bpm.set(src.bpm());
     this.meters.set([...src.meters()]);
     this.mtcOffset.set([...src.mtcOffset()]);
+    this.effects.set(cloneEffects(src.effects()));
   }
 }

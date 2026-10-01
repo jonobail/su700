@@ -6,6 +6,8 @@
  * 8 LOOP, 16 COMPOSED LOOP and 16 FREE tracks.
  */
 
+import type { EffectSetup } from './effects.ts';
+
 export const BANKS = 4;
 export const PADS_PER_BANK = 10;
 export const AUDIO_IN = BANKS * PADS_PER_BANK; // 40
@@ -166,6 +168,8 @@ export interface Scene {
   knobs: Record<number, Record<string, number>>;
   mutes: Record<number, boolean>;
   grooveRes: Record<number, number>;
+  /** Effect assignments, parameters and resolutions: kept only through scenes (p.187). */
+  effects?: EffectSetup;
 }
 
 // ---------------------------------------------------------------------------

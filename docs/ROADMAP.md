@@ -45,6 +45,7 @@ sampler, just as the rear-panel inputs would.
 | SONG: NAME (cursor, dial characters, NAME INSERT/DELETE, NAME EXISTS), COPY (OVERWRITE?, [COPYSONG] name), INIT, MTC OFFSET (stored; needs MIDI sync to matter) | 227–230 | `jobs-song.ts`; default song names are SONGxx |
 | TRACK EDIT: TRACK COPY, TRACK INIT, EVENT COPY (same type, OVERWRITE?), EVENT INIT | 241–245 | meters show sample / sequence-data bars while selecting (p.244) |
 | EVENT EDIT: LOCATION & VALUE (notes: location / velocity / gate within neighbours, REW/FF to step, JOB key to delete, CANCEL restores; MUTE, ROLL pairs, LOOP RESTART, SCENE deletion), NOTE CLEAR, EVENT CLEAR (type by dial or key, measure range), MEASURES (ADD with 1/4–4/4 meter, DELETE, COPY up to M999) | 246–258 | `jobs-edit.ts`, `core/edit.ts` (tested); meter map in `core/model.ts` |
+| Effects: 3 blocks, 43 types (SYS / INS, BPM-synced), EFFECT 1–3 knobs (system: every track but MASTER; insertion: MASTER only, `***` otherwise), RESOLUTION on NOTE + dial (default and CLEAR value 1/2), CLEAR 1–3 (OK zeroes levels; insertion also disconnects), SETUP 1–3 (dial picks the type live, cursor pages through the 2–5 effect parameters, LEVEL, PAN, EF2 SEND, EF3 SEND; pads connect tracks to insertion blocks with REPLACE?), PLAY / PLAY STANDBY only, kept only through scenes and reset on entering a song | 185–192, 211–219, 333–344 | `core/effects.ts` (tested), `audio/effect-rack.ts` |
 
 ## To do
 
@@ -53,8 +54,11 @@ sampler, just as the rear-panel inputs would.
    - DISK: SAVE / LOAD volumes and samples → IndexedDB volumes + AIFF/WAV export — p.281–297
    - SYSTEM MIDI via Web MIDI (sync, channels, control numbers; makes MTC OFFSET useful) — p.303–308, 345–348; SYSTEM MEMORY
    - Ribbon SCRATCH isn't recorded as an event yet, so EVENT CLEAR has no SCRATCH type (p.252)
-2. **Effects**: 3 effect blocks, 43 effect types, system vs insertion, CLEAR 1–3 / SETUP 1–3,
-   EF2/EF3 sends, effect resolution — ch. 7, p.214–219, 333–344.
+2. Effects: the DSP is an interpretation (Web Audio, native nodes only) of each effect's description
+   and parameter list; the manual gives no algorithm detail. Parameters 3–5 of DLY+PAN are listed
+   under 1DELAY's names in the manual; they're shown here by what they do.
+   The effect RESOLUTION list is printed as note glyphs; only the 1/2 default is confirmed (p.212, 215), so
+   1/32–1/1 is assumed — check the PDF.
 3. Exact QUANTIZE and ROLL note-value lists (the manual shows them as note glyphs the text
    extract lost; check the PDF pages 170 and 176).
 4. Persist songs between sessions (the hardware forgets on power-off; DISK SAVE should be the

@@ -1,8 +1,12 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AudioEngine } from './audio/audio-engine';
+import {
+  EFFECT_RES, EFFECT_RES_DEFAULT, EffectBlock, SetupPage, cloneEffects, connectable, connectedElsewhere, dialPage,
+  effectDef, effectKnobActive, isInsertion, pageView, setupPages, toggleConnection,
+} from './core/effects';
 import { KNOB_FNS, KnobFn, defaultKnobs, fromUnit, supports, toUnit } from './core/knob-functions';
 import {
-  BPM_MAX, BPM_MIN, GROOVE_RES_VALUES, PADS_PER_BANK, PPQ, PadFn, QUANTIZE_VALUES,
+  BPM_MAX, BPM_MIN, GROOVE_RES_VALUES, MASTER, PADS_PER_BANK, PPQ, PadFn, QUANTIZE_VALUES,
   ROLL_VALUES, SONG_COUNT, Sample, fitLoop, isSampleTrack, locate, note, trackForPad, trackLabel,
 } from './core/model';
 import { Sequencer } from './core/sequencer';
@@ -13,7 +17,19 @@ import {
 } from './jobs-edit';
 import { MtcOffsetJob, SongCopyJob, SongInitJob, SongNameJob } from './jobs-song';
 
-export type Screen = 'main' | 'function' | 'job' | 'sampling';
+export type Screen = 'main' | 'function' | 'job' | 'sampling' | 'effect';
+
+/** EFFECT SETUP screens (p.214–219): CLEAR n waits for OK; SETUP n pages through the block. */
+interface EffectScreen {
+  mode: 'clear' | 'setup';
+  block: number;
+  page: number;
+  /** Track waiting on REPLACE? (already connected to another insertion block). */
+  replace: number | null;
+}
+
+const EFFECT_FNS: KnobFn[] = ['effect1', 'effect2', 'effect3'];
+const effectIndex = (fn: KnobFn) => EFFECT_FNS.indexOf(fn);
 export type Blink = 'measure' | 'bpm' | 'note' | null;
 
 type SampleRate = 44100 | 22050 | 11025;
@@ -83,6 +99,7 @@ export class UnitController implements JobHost {
   readonly held = signal<ReadonlySet<number>>(new Set());
   readonly jobGroup = signal<JobGroup | null>(null);
   readonly sampling = signal<SamplingState | null>(null);
+  readonly fx = signal<EffectScreen | null>(null);
   readonly sampleRate = signal<SampleRate>(44100);
   readonly sampleBits = signal<16 | 8>(16);
   readonly sampleChannels = signal<ChannelMode>('STEREO');
@@ -122,7 +139,20 @@ export class UnitController implements JobHost {
 
   /** Knob function each knob currently controls. */
   private knobFnFor(track: Track): KnobFn {
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx) return EFFECT_FNS[fx.block];
     return this.screen() === 'function' ? this.knobFn() : track.mainKnob();
+  }
+
+  private block(i: number): EffectBlock {
+    return this.song().effects()[i];
+  }
+
+  /** Whether a knob function does anything on a track right now. */
+  private usable(fn: KnobFn, t: Track): boolean {
+    if (!supports(fn, t.kind) || this.pitchLocked(t, fn)) return false;
+    const e = effectIndex(fn);
+    return e < 0 || effectKnobActive(this.block(e), t.index);
   }
 
   /** 0..1 knob positions for the 12 knobs. */
@@ -130,7 +160,7 @@ export class UnitController implements JobHost {
     this.padTracks().map((i) => {
       const t = this.seq.track(i);
       const fn = this.knobFnFor(t);
-      return supports(fn, t.kind) ? toUnit(fn, t.kind, t.knobs()[fn]) : 0;
+      return this.usable(fn, t) ? toUnit(fn, t.kind, t.knobs()[fn]) : 0;
     }),
   );
 
@@ -161,7 +191,7 @@ export class UnitController implements JobHost {
     const t = this.seq.track(i);
     const fn = this.knobFnFor(t);
     this.lastTrack.set(i);
-    if (!supports(fn, t.kind) || this.pitchLocked(t, fn)) return;
+    if (!this.usable(fn, t)) return;
     this.seq.setKnob(i, fn, fromUnit(fn, t.kind, unit));
   }
 
@@ -170,11 +200,12 @@ export class UnitController implements JobHost {
     const i = this.padTracks()[pos];
     const t = this.seq.track(i);
     const fn = this.knobFnFor(t);
-    if (supports(fn, t.kind)) this.seq.setKnob(i, fn, KNOB_FNS[fn].def(t.kind));
+    if (this.usable(fn, t)) this.seq.setKnob(i, fn, KNOB_FNS[fn].def(t.kind));
   }
 
   selectKnobFn(fn: KnobFn): void {
     if (this.screen() === 'sampling') return;
+    this.leaveEffect(); // any other knob-function button cancels CLEAR / leaves SETUP (p.215)
     if (this.screen() === 'job') {
       this.jobs.knobFn(fn);
       return;
@@ -193,6 +224,7 @@ export class UnitController implements JobHost {
     this.held.update((s) => new Set(s).add(pos));
     const i = this.padTracks()[pos];
     const t = this.seq.track(i);
+    if (this.fx()?.replace != null) return; // REPLACE? waits for OK / CANCEL
 
     if (this.ribbonTrackHeld()) {
       this.ribbonPad.set(pos);
@@ -211,6 +243,8 @@ export class UnitController implements JobHost {
       return;
     }
     this.lastTrack.set(i);
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx) return this.effectPad(fx, i, velocity);
 
     if (this.knobResetHeld()) {
       if (this.seq.mode() === 'play' || this.seq.mode() === 'playStandby') {
@@ -265,6 +299,7 @@ export class UnitController implements JobHost {
       return;
     }
     if (this.screen() === 'sampling') return;
+    this.leaveEffect();
     this.screen.set('function');
     this.padFn.set(fn);
     this.lastFnKind = 'pad';
@@ -277,6 +312,7 @@ export class UnitController implements JobHost {
       return;
     }
     if (this.screen() === 'sampling') return;
+    if (down) this.leaveEffect();
     this.rollHeld.set(down);
     if (down) this.screen.set('function');
     else this.padFn.set('play');
@@ -299,7 +335,7 @@ export class UnitController implements JobHost {
   // Display-area buttons, dial, OK / CANCEL, cursor
 
   pressBlink(which: Exclude<Blink, null>): void {
-    if (this.screen() === 'sampling' || this.screen() === 'job') return;
+    if (this.screen() === 'sampling' || this.screen() === 'job' || this.screen() === 'effect') return;
     this.screen.set('function');
     this.blink.update((b) => (b === which ? null : which));
   }
@@ -308,6 +344,8 @@ export class UnitController implements JobHost {
     const s = this.sampling();
     if (s) return this.samplingDial(s, step);
     if (this.screen() === 'job') return this.jobs.dial(step);
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx) return this.effectDial(fx, step);
 
     switch (this.blink()) {
       case 'measure':
@@ -328,7 +366,7 @@ export class UnitController implements JobHost {
     // Function screen: step the value on the last-touched track.
     const t = this.seq.track(this.lastTrack());
     const fn = this.knobFnFor(t);
-    if (supports(fn, t.kind) && !this.pitchLocked(t, fn)) this.seq.setKnob(t.index, fn, t.knobs()[fn] + step);
+    if (this.usable(fn, t)) this.seq.setKnob(t.index, fn, t.knobs()[fn] + step);
   }
 
   pressOk(): void {
@@ -349,6 +387,8 @@ export class UnitController implements JobHost {
       else this.leaveJob();
       return;
     }
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx) return this.effectOk(fx);
     this.toMain();
   }
 
@@ -361,17 +401,30 @@ export class UnitController implements JobHost {
       else this.leaveJob();
       return;
     }
+    const fx = this.fx();
+    if (fx?.replace != null) {
+      this.fx.set({ ...fx, replace: null }); // leave the track's connection as it was
+      return;
+    }
+    this.leaveEffect();
     if (this.seq.mode() === 'recStandby') this.seq.pressStop();
     this.toMain();
   }
 
   pressCursor(dir: -1 | 1): void {
     if (this.screen() === 'job') return this.jobs.cursor(dir);
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx?.mode === 'setup' && fx.replace === null) {
+      const pages = setupPages(fx.block, this.block(fx.block));
+      this.fx.set({ ...fx, page: Math.min(pages.length - 1, Math.max(0, fx.page + dir)) });
+      return;
+    }
     const s = this.sampling();
     if (s?.step === 'params') this.sampling.set({ ...s, cursor: ((s.cursor + dir + 3) % 3) as 0 | 1 | 2 });
   }
 
   private toMain(): void {
+    this.fx.set(null);
     this.screen.set('main');
     this.blink.set(null);
   }
@@ -386,6 +439,7 @@ export class UnitController implements JobHost {
       return;
     }
     this.jobs.abort();
+    this.fx.set(null);
     this.jobGroup.set(g);
     this.screen.set('job');
     this.blink.set(null);
@@ -419,6 +473,7 @@ export class UnitController implements JobHost {
   pressTransport(id: 'rec' | 'top' | 'stop' | 'play'): void {
     if (this.sampling() || this.screen() === 'job') return;
     this.engine.resume();
+    if (id === 'rec' && this.screen() === 'effect') this.toMain(); // SETUP / CLEAR are PLAY-only screens
     switch (id) {
       case 'rec':
         this.seq.pressRec();
@@ -511,7 +566,7 @@ export class UnitController implements JobHost {
     const t = this.seq.track(i);
     const fn = this.ribbonFn();
     if (fn === 'scratch') return this.doScratch(t, v);
-    if (v === null || !supports(fn, t.kind)) return;
+    if (v === null || !this.usable(fn, t)) return;
     this.lastTrack.set(i);
     this.seq.setKnob(i, fn, fromUnit(fn, t.kind, v));
   }
@@ -553,6 +608,7 @@ export class UnitController implements JobHost {
         this.show('STOP SEQ', 'FIRST');
         return;
       }
+      this.fx.set(null);
       const last = this.lastTrack();
       const target = isSampleTrack(last) ? last : this.bank() * PADS_PER_BANK;
       this.sampling.set({ step: 'select', target, cursor: 0 });
@@ -669,11 +725,13 @@ export class UnitController implements JobHost {
   }
 
   /** What the dial edits when NOTE is blinking. */
-  private noteContext(): 'roll' | 'groove' | 'quantize' | null {
+  private noteContext(): 'roll' | 'groove' | 'quantize' | 'fxRes' | null {
     if (this.screen() !== 'function') return null;
     if (this.rollHeld()) return 'roll';
     const fn = KNOB_FNS[this.knobFn()];
     if (this.lastFnKind === 'pad') return 'quantize';
+    const e = effectIndex(this.knobFn());
+    if (e >= 0) return effectDef(this.block(e).type).sync ? 'fxRes' : null;
     if (fn.grooveRes) return 'groove';
     return fn.quantized ? 'quantize' : null;
   }
@@ -693,7 +751,90 @@ export class UnitController implements JobHost {
       }
       case 'quantize':
         this.seq.quantize.update((q) => Math.min(QUANTIZE_VALUES.length - 1, Math.max(0, q + step)));
+        return;
+      case 'fxRes': {
+        // Set only here, never recorded: store it in a scene to change it during a song (p.192).
+        const e = effectIndex(this.knobFn());
+        const next = cloneEffects(this.song().effects());
+        next[e].res = Math.min(EFFECT_RES.length - 1, Math.max(0, next[e].res + step));
+        this.song().effects.set(next);
+      }
     }
+  }
+
+  // =====================================================================
+  // EFFECT SETUP: CLEAR 1–3 and SETUP 1–3 (p.214–219)
+
+  private fxAllowed(): boolean {
+    const m = this.seq.mode();
+    if (this.sampling() || this.screen() === 'job') return false;
+    if (m === 'play' || m === 'playStandby') return true;
+    this.show('NOT IN REC', '');
+    return false;
+  }
+
+  pressClear(block: number): void {
+    if (!this.fxAllowed()) return;
+    this.fx.set({ mode: 'clear', block, page: 0, replace: null });
+    this.screen.set('effect');
+    this.blink.set(null);
+  }
+
+  pressSetup(block: number): void {
+    if (!this.fxAllowed()) return;
+    this.fx.set({ mode: 'setup', block, page: 0, replace: null });
+    this.screen.set('effect');
+    this.blink.set(null);
+  }
+
+  private leaveEffect(): void {
+    if (this.screen() !== 'effect') return;
+    this.fx.set(null);
+    this.screen.set('main');
+  }
+
+  private effectPad(fx: EffectScreen, i: number, velocity: number): void {
+    if (fx.mode === 'clear') {
+      this.seq.toggleMute(i); // mutes can be operated on the CLEAR screen
+      return;
+    }
+    const b = this.block(fx.block);
+    if (isInsertion(b) && connectable(i)) {
+      const setup = this.song().effects();
+      if (!b.connected.includes(i) && connectedElsewhere(setup, fx.block, i) >= 0) {
+        this.fx.set({ ...fx, replace: i });
+        return;
+      }
+      this.song().effects.set(toggleConnection(setup, fx.block, i));
+    }
+    this.seq.noteOn(i, velocity); // pads always play on the setup screens
+  }
+
+  private effectDial(fx: EffectScreen, step: number): void {
+    if (fx.mode !== 'setup' || fx.replace !== null) return;
+    const page = setupPages(fx.block, this.block(fx.block))[fx.page];
+    this.song().effects.set(dialPage(this.song().effects(), fx.block, page, step));
+  }
+
+  private effectOk(fx: EffectScreen): void {
+    if (fx.replace !== null) {
+      this.song().effects.set(toggleConnection(this.song().effects(), fx.block, fx.replace, true));
+      this.fx.set({ ...fx, replace: null });
+      return;
+    }
+    if (fx.mode === 'clear') {
+      // System: every track's level → 0. Insertion: MASTER level → 0 and all tracks disconnected (p.215).
+      const fn = EFFECT_FNS[fx.block];
+      const ins = isInsertion(this.block(fx.block));
+      for (const t of this.song().tracks) {
+        if (ins ? t.index === MASTER : t.index !== MASTER) this.seq.setKnob(t.index, fn, 0, false);
+      }
+      const next = cloneEffects(this.song().effects());
+      if (ins) next[fx.block].connected = [];
+      next[fx.block].res = EFFECT_RES_DEFAULT;
+      this.song().effects.set(next);
+    }
+    this.toMain();
   }
 
   private deleteNotes(i: number, from: number, to: number): void {
@@ -731,7 +872,7 @@ export class UnitController implements JobHost {
 
     const meterFor = (fn: KnobFn | null) =>
       tracks.map<MeterCell>((t) => {
-        const ok = fn && supports(fn, t.kind) && !this.pitchLocked(t, fn);
+        const ok = fn && this.usable(fn, t);
         return {
           value: ok ? toUnit(fn!, t.kind, t.knobs()[fn!]) : null,
           bipolar: ok ? KNOB_FNS[fn!].min(t.kind) < 0 : false,
@@ -792,6 +933,9 @@ export class UnitController implements JobHost {
       };
     }
 
+    const fx = this.fx();
+    if (this.screen() === 'effect' && fx) return this.effectDisplay(base, fx, f, meterFor);
+
     if (this.screen() === 'main') {
       const n = this.pendingSong() ?? song.number - 1;
       const name = this.pendingSong() !== null ? this.songName(n) : song.name();
@@ -808,19 +952,59 @@ export class UnitController implements JobHost {
     const fn = this.knobFn();
     const def = KNOB_FNS[fn];
     const locked = this.pitchLocked(last, fn);
-    const value = !supports(fn, last.kind) ? '***' : locked ? '---' : def.format(last.knobs()[fn]);
+    const e = effectIndex(fn);
+    const inactive = !supports(fn, last.kind) || (e >= 0 && !effectKnobActive(this.block(e), last.index));
+    const value = inactive ? '***' : locked ? '---' : def.format(last.knobs()[fn]);
     const ctx = this.noteContext();
     let noteText = '';
     if (ctx === 'roll') noteText = `ROLL=${ROLL_VALUES[this.rollRate()].label}`;
     else if (ctx === 'groove') noteText = isSampleTrack(last.index) ? `RES=${GROOVE_RES_VALUES[last.grooveRes()].label}` : '';
     else if (ctx === 'quantize') noteText = `Q=${QUANTIZE_VALUES[seq.quantize()]?.label ?? 'OFF'}`;
+    else if (ctx === 'fxRes') noteText = `RES=${EFFECT_RES[this.block(e).res]}`;
     return {
       ...base,
-      top: f?.top ?? def.screen,
+      // The EFFECT screens name the effect assigned to the block (p.211).
+      top: f?.top ?? (e >= 0 ? this.block(e).type : def.screen),
       value: f?.value ?? `${trackLabel(last.index)} ${value}`,
       padFn: this.rollHeld() ? 'play' : this.padFn(),
       meters: meterFor(fn),
       note: noteText,
+    };
+  }
+
+  private effectDisplay(
+    base: DisplayModel, fx: EffectScreen, f: { top: string; value: string } | null,
+    meterFor: (fn: KnobFn | null) => MeterCell[],
+  ): DisplayModel {
+    const b = this.block(fx.block);
+    const def = effectDef(b.type);
+    const meters = meterFor(EFFECT_FNS[fx.block]);
+    const note = def.sync ? `RES=${EFFECT_RES[b.res]}` : '';
+    if (fx.mode === 'clear') {
+      return { ...base, top: f?.top ?? `CLEAR=${b.type}`, value: f?.value ?? 'PRESS OK', meters, note };
+    }
+    if (fx.replace !== null) {
+      return { ...base, top: 'REPLACE?', value: trackLabel(fx.replace), blinkTop: true, meters, note };
+    }
+    // Insertion: brackets show the tracks connected to the block; MASTER has none (p.217).
+    const cells = isInsertion(b)
+      ? meters.map((m, p) => {
+        const i = this.padTracks()[p];
+        return { ...m, bracket: i !== MASTER && b.connected.includes(i) };
+      })
+      : meters;
+    const pages = setupPages(fx.block, b);
+    const page: SetupPage = pages[Math.min(fx.page, pages.length - 1)];
+    const v = pageView(fx.block, b, page);
+    // The manual's "(" / ")" page marks are the diagonal segments; DSEG14 draws those as "<" / ">" (p.218).
+    const prev = fx.page > 0 ? '<' : '';
+    const next = fx.page < pages.length - 1 ? '>' : '';
+    return {
+      ...base,
+      top: f?.top ?? `${prev}${v.name}`,
+      value: f?.value ?? `${v.value}${next}`,
+      meters: cells,
+      note,
     };
   }
 

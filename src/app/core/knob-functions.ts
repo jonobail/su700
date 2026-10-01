@@ -88,10 +88,11 @@ export const KNOB_FNS: Record<KnobFn, KnobFnDef> = {
   cutoff: { id: 'cutoff', screen: 'FILTR CUTOFF', min: c(0), max: 127, def: c(127), tracks: SAMPLE, quantized: true, format: unsigned },
   resonance: { id: 'resonance', screen: 'RESONANCE', min: c(0), max: 127, def: c(16), tracks: SAMPLE, format: unsigned },
 
-  // Effect levels. Effect blocks aren't emulated yet, so these are stored but inaudible.
-  effect1: { id: 'effect1', screen: 'EFFECT 1', min: c(0), max: 127, def: c(0), tracks: [...SAMPLE, 'audioIn'], format: unsigned },
-  effect2: { id: 'effect2', screen: 'EFFECT 2', min: c(0), max: 127, def: c(0), tracks: [...SAMPLE, 'audioIn'], format: unsigned },
-  effect3: { id: 'effect3', screen: 'EFFECT 3', min: c(0), max: 127, def: c(0), tracks: [...SAMPLE, 'audioIn'], format: unsigned },
+  // Effect levels (p.211). MASTER stores one too: it is the level for an insertion block. Which
+  // tracks a knob works on depends on the block's effect (see `effectKnobActive`).
+  effect1: { id: 'effect1', screen: 'EFFECT 1', min: c(0), max: 127, def: c(0), tracks: ALL, format: unsigned },
+  effect2: { id: 'effect2', screen: 'EFFECT 2', min: c(0), max: 127, def: c(0), tracks: ALL, format: unsigned },
+  effect3: { id: 'effect3', screen: 'EFFECT 3', min: c(0), max: 127, def: c(0), tracks: ALL, format: unsigned },
 };
 
 export const ALL_KNOB_FNS = Object.keys(KNOB_FNS) as KnobFn[];

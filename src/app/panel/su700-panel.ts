@@ -86,6 +86,8 @@ export class Su700Panel {
     if (b.param) return this.unit.selectKnobFn(b.param);
     if ((b.action === 'KNOB RESET' || b.action === 'NOTE DEL' || b.action === 'INSERT' || b.action === 'DELETE') &&
       this.unit.pressJobKey(b.action)) return;
+    const fx = /^(CLEAR|SETUP) ([123])$/.exec(b.action ?? '');
+    if (fx) return fx[1] === 'CLEAR' ? this.unit.pressClear(+fx[2] - 1) : this.unit.pressSetup(+fx[2] - 1);
     switch (b.action) {
       case 'KNOB RESET': return this.unit.knobResetHeld.set(true);
       case 'NOTE DEL': return this.unit.noteDelHeld.set(true);
@@ -100,6 +102,8 @@ export class Su700Panel {
 
   protected knobFnLit(b: KnobFnButton): boolean {
     if (b.param) return this.unit.screen() === 'function' && b.param === this.unit.knobFn();
+    const fx = this.unit.fx();
+    if (fx && this.unit.screen() === 'effect') return b.action === `${fx.mode.toUpperCase()} ${fx.block + 1}`;
     return (b.action === 'KNOB RESET' && this.unit.knobResetHeld()) || (b.action === 'NOTE DEL' && this.unit.noteDelHeld());
   }
 

@@ -1,5 +1,6 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { AudioEngine, Voice, attackSec, releaseSec } from '../audio/audio-engine';
+import { cloneEffects, defaultEffects } from './effects';
 import { KNOB_FNS, KnobFn, clampKnob, supports } from './knob-functions';
 import {
   GROOVE_RES_VALUES, LoopNote, MASTER, PPQ, QUANTIZE_VALUES, SONG_COUNT, Scene, SeqEvent,
@@ -81,6 +82,8 @@ export class Sequencer {
 
   constructor() {
     this.applyAll();
+    // Effect setup and tempo (synchronised effects) follow the current song.
+    effect(() => this.engine.setEffects(this.song().effects(), this.song().bpm()));
     const frame = () => {
       if (this.running()) this.position.set(Math.floor(this.tickAt(this.engine.now)));
       requestAnimationFrame(frame);
@@ -103,6 +106,8 @@ export class Sequencer {
   selectSong(i: number): void {
     if (this.mode() !== 'playStandby') return;
     this.song.set(this.songAt(i));
+    // Without a TOP scene a song starts from the default effects (p.187); setPosition(0) recalls it.
+    this.song().effects.set(defaultEffects());
     this.undo = null;
     this.undoState.set('none');
     this.setPosition(0);
@@ -624,6 +629,7 @@ export class Sequencer {
       scene.mutes[t.index] = t.muted();
       if (isSampleTrack(t.index)) scene.grooveRes[t.index] = t.grooveRes();
     }
+    scene.effects = cloneEffects(this.song().effects());
     this.song().scenes.update((s) => s.map((x, i) => (i === n ? scene : x)));
     return true;
   }
@@ -642,6 +648,7 @@ export class Sequencer {
       this.engine.setMuted(+idx, muted);
     }
     for (const [idx, res] of Object.entries(scene.grooveRes)) this.track(+idx).grooveRes.set(res);
+    if (scene.effects) this.song().effects.set(cloneEffects(scene.effects));
     if (record && this.recording()) this.addRecEvent({ type: 'scene', tick: this.recTick(false), track: MASTER, scene: n });
     return true;
   }
