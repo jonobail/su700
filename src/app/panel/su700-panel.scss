@@ -83,6 +83,11 @@ $pad-red: #e85a58;
   box-shadow: 0 1.5px 0 #7f8187, 0 2px 3px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.25);
 }
 .btn.big { width: 32px; height: 20px; }
+.btn.kf { width: 33px; height: 19px; }
+.label.kf-label { font-size: 8px; }
+.btn.bpm { width: 34px; height: 25px; }
+.btn.rt { width: 32px; height: 18px; }
+.btn.disp-btn { width: 31px; height: 19px; }
 .btn.mode { width: 36px; height: 24px; top: 74px; border-radius: 12px; }
 .btn.scene { width: 34px; height: 22px; border-radius: 11px; }
 .btn.pill { width: 38px; height: 24px; border-radius: 12px; }
@@ -130,10 +135,10 @@ $pad-red: #e85a58;
   }
   &.right i { left: 26px; }
 }
-.dotted-frame {
-  position: absolute; left: 462px; top: 265px; width: 240px; height: 64px; pointer-events: none;
-  border-top: 1.5px dotted rgba(230,231,234,.7); border-right: 1.5px dotted rgba(230,231,234,.7);
-}
+/* Dotted run from the MARKER box's right edge, down the side, and back into the "8" tab. */
+.dots-h, .dots-v2 { position: absolute; pointer-events: none; }
+.dots-h  { height: 2px; background: repeating-linear-gradient(90deg, $silk 0 2px, transparent 2px 4px); }
+.dots-v2 { width: 2px; background: repeating-linear-gradient(180deg, $silk 0 2px, transparent 2px 4px); }
 .num-tab {
   width: 40px; height: 11px; transform: translate(-50%, 0); font-weight: 500;
   display: grid; place-items: center; font-size: 7px; line-height: 1;
@@ -162,14 +167,15 @@ $pad-red: #e85a58;
 }
 
 // ---------- display ----------
+/* The glass runs out to x≈709; MEASURE / BPM / NOTE are printed on it, at its right edge. */
 .display-bezel {
-  position: absolute; left: 290px; top: 411px; width: 390px; height: 128px;
+  position: absolute; left: 291px; top: 411px; width: 418px; height: 128px;
   padding: 3px; box-sizing: border-box; border-radius: 3px;
   background: #0d0e11;
   box-shadow: 0 0 0 2px #2c313f, inset 0 1px 2px rgba(0,0,0,.8);
 }
 .display { width: 100%; height: 100%; }
-.disp-label { left: 666px; width: 60px; text-align: right; color: #d9443d; font-size: 7.5px; z-index: 2; }
+.leader { position: absolute; left: 711px; width: 27px; height: 1.3px; background: $silk; pointer-events: none; }
 
 // ---------- logo ----------
 .yamaha {
@@ -219,12 +225,13 @@ $pad-red: #e85a58;
 
 // ---------- ribbon ----------
 .ribbon-housing {
-  position: absolute; left: 862px; top: 288px; width: 92px; height: 254px; border-radius: 6px;
+  position: absolute; left: 862px; top: 283px; width: 93px; height: 254px; border-radius: 6px;
   background: #3a4053;
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.25), inset 0 1px 3px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.06);
 }
+/* The strip sits toward the left of its housing, as on the unit. */
 .ribbon {
-  position: absolute; left: 14px; top: 22px; width: 62px; height: 206px; border-radius: 1px;
+  position: absolute; left: 5px; top: 22px; width: 62px; height: 207px; border-radius: 1px;
   background: #111215;
   box-shadow: inset 0 0 0 1px #000, inset 0 0 6px rgba(0,0,0,.8); cursor: pointer; touch-action: none;
 }
@@ -233,10 +240,10 @@ $pad-red: #e85a58;
   background: radial-gradient(ellipse, rgba(200,200,210,.35), transparent 70%);
 }
 .dots-v {
-  position: absolute; width: 6px; height: 26px;
-  background: repeating-linear-gradient(180deg, $silk 0 5px, transparent 5px 10px);
+  position: absolute; width: 9px; height: 20px;
+  background: repeating-linear-gradient(180deg, $silk 0 9px, transparent 9px 11px);
 }
-.dot-sq { position: absolute; width: 6px; height: 6px; background: $silk; }
+.dot-sq { position: absolute; width: 8.5px; height: 8.5px; background: $silk; }
 .dots-l {
   position: absolute; left: 53px; top: 544px; width: 96px; height: 40px; pointer-events: none;
   background:

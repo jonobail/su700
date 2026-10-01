@@ -4,7 +4,7 @@
   <div class="front-surface"></div>
 
   <!-- ================= KNOB FUNCTION ================= -->
-  <div class="caption" style="left: 52px; top: 37px; font-size: 8.5px">KNOB FUNCTION</div>
+  <div class="caption" style="left: 52px; top: 39px; font-size: 8.5px">KNOB FUNCTION</div>
   @for (sp of knobFnSpines; track sp[0]) {
     <div class="tab-spine" [style.top.px]="sp[0]" [style.height.px]="sp[1] - sp[0]"></div>
   }
@@ -13,8 +13,8 @@
   }
   @for (row of knobFnRows; track row.y) {
     @for (b of row.buttons; track b.label) {
-      <div class="label c" [style.left.px]="b.x" [style.top.px]="row.y - 16">{{ b.label }}</div>
-      <button class="btn c" [class.gray]="b.gray" [class.black]="!b.gray"
+      <div class="label kf-label c" [style.left.px]="b.x" [style.top.px]="row.y - 19.5">{{ b.label }}</div>
+      <button class="btn kf c" [class.gray]="b.gray" [class.black]="!b.gray"
               [class.lit]="knobFnLit(b)"
               [style.left.px]="b.x" [style.top.px]="row.y" [attr.aria-label]="b.label"
               (pointerdown)="knobFnDown(b)" (pointerup)="knobFnUp(b)" (pointerleave)="knobFnUp(b)"></button>
@@ -51,7 +51,9 @@
             (click)="unit.sceneMarker.update(s => s === 'scene' ? 'marker' : 'scene')"><i></i></button>
     <span class="sm-label outline">MARKER</span>
   </div>
-  <div class="dotted-frame"></div>
+  <div class="dots-h" style="left: 466px; top: 263px; width: 243px"></div>
+  <div class="dots-v2" style="left: 707px; top: 263px; height: 63px"></div>
+  <div class="dots-h" style="left: 697px; top: 324px; width: 10px"></div>
   <div class="label c boxed" style="left: 308px; top: 277px">INIT</div>
   <button class="btn pill scene-size c" style="left: 308px; top: 305px" aria-label="Scene init"
           [class.lit]="unit.initHeld()" (pointerdown)="unit.initHeld.set(true)"
@@ -61,7 +63,7 @@
     <button class="btn scene c" [style.left.px]="gridX[i]" style="top: 305px"
             [attr.aria-label]="'Scene ' + s" (pointerdown)="unit.scenePress(i, true)"
             (pointerup)="unit.scenePress(i, false)" (pointerleave)="unit.scenePress(i, false)"></button>
-    <div class="num-tab c" [style.left.px]="gridX[i]" style="top: 323px">{{ i + 1 }}</div>
+    <div class="num-tab c" [style.left.px]="gridX[i]" style="top: 320px">{{ i + 1 }}</div>
   }
 
   <!-- ================= TRANSPORT ================= -->
@@ -87,9 +89,9 @@
   <div class="display-bezel">
     <su-display class="display" [model]="unit.display()" />
   </div>
-  @for (d of [['MEASURE', 440, 'measure'], ['BPM', 476, 'bpm'], ['NOTE', 512, 'note']]; track d[0]) {
-    <div class="disp-label" [style.top.px]="+d[1] - 6">{{ d[0] }}</div>
-    <button class="btn black c" style="left: 757px" [style.top.px]="d[1]" [attr.aria-label]="d[0]"
+  @for (d of [['MEASURE', 436, 'measure'], ['BPM', 472, 'bpm'], ['NOTE', 508.5, 'note']]; track d[0]; let i = $index) {
+    <div class="leader" [style.top.px]="443 + i * 29"></div>
+    <button class="btn black c disp-btn" style="left: 757px" [style.top.px]="d[1]" [attr.aria-label]="d[0]"
             [class.lit]="unit.blink() === d[2]" (click)="unit.pressBlink($any(d[2]))"></button>
   }
 
@@ -115,22 +117,22 @@
            [value]="engine.masterVolumeLevel()" (valueChange)="engine.setMasterVolume($event)"
            (reset)="engine.setMasterVolume(0.8)" />
 
-  <div class="label c" style="left: 905px; top: 216px; font-size: 7.5px">BPM COUNTER</div>
-  <button class="btn black c big" style="left: 905px; top: 240px" aria-label="BPM counter (tap tempo)"
+  <div class="label c" style="left: 905px; top: 208px; font-size: 8px">BPM COUNTER</div>
+  <button class="btn black c bpm" style="left: 905px; top: 236px" aria-label="BPM counter (tap tempo)"
           (pointerdown)="unit.tapTempo()"></button>
 
   <!-- ================= DATA ENTRY ================= -->
   <div class="data-box upper"></div>
   <div class="data-box lower"></div>
-  <div class="arrow left c" style="left: 757px; top: 171px"></div>
-  <div class="arrow right c" style="left: 806px; top: 171px"></div>
-  <button class="btn black c big" style="left: 757px; top: 190px" aria-label="Cursor left" (click)="unit.pressCursor(-1)"></button>
-  <button class="btn black c big" style="left: 806px; top: 190px" aria-label="Cursor right" (click)="unit.pressCursor(1)"></button>
-  <su-jog-wheel class="at" style="left: 782px; top: 281px" (turn)="unit.dial($event)" />
-  <div class="label c" style="left: 757px; top: 356px">CANCEL</div>
-  <div class="label c" style="left: 806px; top: 356px">OK</div>
-  <button class="btn black c big" style="left: 757px; top: 373px" aria-label="Cancel" (click)="unit.pressCancel()"></button>
-  <button class="btn black c big" style="left: 806px; top: 373px" aria-label="OK" (click)="unit.pressOk()"></button>
+  <div class="arrow left c" style="left: 757px; top: 169px"></div>
+  <div class="arrow right c" style="left: 806px; top: 169px"></div>
+  <button class="btn black c big" style="left: 757px; top: 187px" aria-label="Cursor left" (click)="unit.pressCursor(-1)"></button>
+  <button class="btn black c big" style="left: 806px; top: 187px" aria-label="Cursor right" (click)="unit.pressCursor(1)"></button>
+  <su-jog-wheel class="at" style="left: 782px; top: 278px" (turn)="unit.dial($event)" />
+  <div class="label c" style="left: 757px; top: 347px; font-size: 8px">CANCEL</div>
+  <div class="label c" style="left: 806px; top: 347px; font-size: 8px">OK</div>
+  <button class="btn black c big" style="left: 757px; top: 368px" aria-label="Cancel" (click)="unit.pressCancel()"></button>
+  <button class="btn black c big" style="left: 806px; top: 368px" aria-label="OK" (click)="unit.pressOk()"></button>
 
   <!-- ================= RIBBON ================= -->
   <div class="ribbon-housing">
@@ -141,12 +143,12 @@
       }
     </div>
   </div>
-  <div class="dots-v" style="left: 897px; top: 548px"></div>
-  <div class="dot-sq" style="left: 880px; top: 580px"></div>
-  <button class="btn black c big" style="left: 905px; top: 585px" aria-label="Ribbon track"
+  <div class="dots-v" style="left: 898px; top: 543px"></div>
+  <div class="dot-sq" style="left: 869px; top: 577px"></div>
+  <button class="btn black c rt" style="left: 902px; top: 581px" aria-label="Ribbon track"
           [class.lit]="unit.ribbonTrackHeld()" (pointerdown)="unit.ribbonTrackHeld.set(true)"
           (pointerup)="unit.ribbonTrackHeld.set(false)" (pointerleave)="unit.ribbonTrackHeld.set(false)"></button>
-  <div class="label" style="left: 922px; top: 594px; text-align: left; line-height: 1.1">RIBBON<br>TRACK</div>
+  <div class="label" style="left: 926px; top: 572px; text-align: left; line-height: 1.1; font-size: 8px">RIBBON<br>TRACK</div>
 
   <!-- ================= KNOBS ================= -->
   <div class="dots-l"></div>

@@ -36,6 +36,7 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
         <span class="clip" [class.on]="m.clip">CLIP</span>
       </div>
       <img class="brand" src="su700-logo.svg" alt="SAMPLING UNIT SU700" draggable="false" />
+      <div class="legend"><span>MEASURE</span><span>BPM</span><span>NOTE</span></div>
 
       <div class="main">
         <div class="left">
@@ -90,7 +91,7 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
   styles: `
     :host { display: block; }
     .glass {
-      position: relative; width: 100%; height: 100%; box-sizing: border-box; padding: 5px 10px 6px 14px;
+      position: relative; width: 100%; height: 100%; box-sizing: border-box; padding: 5px 56px 6px 14px;
       border-radius: 4px; overflow: hidden; display: flex; flex-direction: column;
       background:
         linear-gradient(170deg, rgba(255,255,255,.07), transparent 35%),
@@ -100,6 +101,15 @@ const PAD_FN_LABEL = { play: 'PLAY', mute: 'ON/MUTE', roll: 'PLAY', restart: 'LO
     }
     /* Printed legend, placed where it sits on the real glass (panel coords 469,421 minus the glass origin). */
     .brand { position: absolute; left: 176.3px; top: 6.6px; width: 181.2px; pointer-events: none; }
+    /* MEASURE / BPM / NOTE are printed on the glass beside the data-entry keys (panel y 443.5, 472.5, 501.5). */
+    .legend { position: absolute; left: 370px; top: 0; pointer-events: none; }
+    .legend span {
+      position: absolute; left: 0; transform: translateY(-50%); white-space: nowrap;
+      font: 400 8px/1 Arial, sans-serif; letter-spacing: .5px; color: #c4504a;
+    }
+    .legend span:nth-child(1) { top: 29.5px; }
+    .legend span:nth-child(2) { top: 58.5px; }
+    .legend span:nth-child(3) { top: 87.5px; }
     /* Indicator row sits below the printed legend, as on the unit. */
     .ann {
       margin-top: 22px; display: flex; gap: 5px; font: 700 5.5px/1 Arial, sans-serif; color: var(--dim);

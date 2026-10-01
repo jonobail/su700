@@ -20,7 +20,7 @@ function capture(el: Element, id: number): void {
     </div>
   `,
   styles: `
-    :host { display: block; width: 108px; height: 108px; touch-action: none; cursor: grab; user-select: none; }
+    :host { display: block; width: 120px; height: 120px; touch-action: none; cursor: grab; user-select: none; }
     .ring {
       width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center;
       background: #2c3141;
@@ -32,7 +32,7 @@ function capture(el: Element, id: number): void {
       box-shadow: 0 3px 5px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
     }
     .dimple {
-      position: absolute; left: 50%; top: 11%; width: 26px; height: 26px; margin-left: -13px;
+      position: absolute; left: 50%; top: 7%; width: 30%; height: 30%; margin-left: -15%;
       border-radius: 50%;
       background: #141518;
       box-shadow: inset 0 2px 3px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.07);
@@ -43,7 +43,8 @@ function capture(el: Element, id: number): void {
 export class JogWheel {
   /** Emits +1 / -1 per detent (clockwise = +1). */
   readonly turn = output<number>();
-  protected readonly angle = signal(0);
+  /** Rests with the finger dimple up and to the left, as photographed. */
+  protected readonly angle = signal(-40);
   private acc = 0;
 
   start(e: PointerEvent): void {

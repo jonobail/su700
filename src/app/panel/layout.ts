@@ -30,7 +30,7 @@ export interface KnobFnRow {
 const C = [124, 174, 224];
 
 export const KNOB_FN_ROWS: KnobFnRow[] = [
-  { y: 74, buttons: [{ label: 'LEVEL', x: C[0], param: 'level' }, { label: 'PAN', x: C[1], param: 'pan' }, { label: 'PITCH', x: C[2], param: 'pitch' }] },
+  { y: 75, buttons: [{ label: 'LEVEL', x: C[0], param: 'level' }, { label: 'PAN', x: C[1], param: 'pan' }, { label: 'PITCH', x: C[2], param: 'pitch' }] },
   { y: 111, buttons: [{ label: 'ATTACK', x: C[0], param: 'attack' }, { label: 'RELEASE', x: C[1], param: 'release' }, { label: 'LENGTH', x: C[2], param: 'length' }] },
   { y: 148, buttons: [{ label: 'TIMING', x: C[0], param: 'grvTiming' }, { label: 'VELOCITY', x: C[1], param: 'grvVelocity' }, { label: 'GATETIME', x: C[2], param: 'grvGate' }] },
   { y: 185, buttons: [{ label: 'SPEED', x: C[0], param: 'lfoSpeed' }, { label: 'AMP', x: C[1], param: 'lfoAmp' }] },
@@ -39,19 +39,19 @@ export const KNOB_FN_ROWS: KnobFnRow[] = [
   { y: 295, buttons: [{ label: 'LO GAIN', x: C[0], param: 'eqLoGain' }, { label: 'LO FREQ', x: C[1], param: 'eqLoFreq' }] },
   { y: 342, buttons: [{ label: 'CUTOFF', x: C[0], param: 'cutoff' }, { label: 'RESONANCE', x: C[1], param: 'resonance' }] },
   { y: 379, buttons: [{ label: 'EFFECT 1', x: C[0], param: 'effect1' }, { label: 'EFFECT 2', x: C[1], param: 'effect2' }, { label: 'EFFECT 3', x: C[2], param: 'effect3' }] },
-  { y: 416, buttons: [{ label: 'CLEAR 1', x: C[0], action: 'CLEAR 1', gray: true }, { label: 'CLEAR 2', x: C[1], action: 'CLEAR 2', gray: true }, { label: 'CLEAR 3', x: C[2], action: 'CLEAR 3', gray: true }] },
+  { y: 415, buttons: [{ label: 'CLEAR 1', x: C[0], action: 'CLEAR 1', gray: true }, { label: 'CLEAR 2', x: C[1], action: 'CLEAR 2', gray: true }, { label: 'CLEAR 3', x: C[2], action: 'CLEAR 3', gray: true }] },
   { y: 452, buttons: [{ label: 'SETUP 1', x: C[0], action: 'SETUP 1', gray: true }, { label: 'SETUP 2', x: C[1], action: 'SETUP 2', gray: true }, { label: 'SETUP 3', x: C[2], action: 'SETUP 3', gray: true }] },
-  { y: 489, buttons: [{ label: 'KNOB RESET', x: C[0], action: 'KNOB RESET', gray: true }, { label: 'NOTE DEL', x: C[1], action: 'NOTE DEL', gray: true }] },
-  { y: 526, buttons: [{ label: 'INSERT', x: C[0], action: 'INSERT', gray: true }, { label: 'DELETE', x: C[1], action: 'DELETE', gray: true }] },
+  { y: 488, buttons: [{ label: 'KNOB RESET', x: C[0], action: 'KNOB RESET', gray: true }, { label: 'NOTE DEL', x: C[1], action: 'NOTE DEL', gray: true }] },
+  { y: 523, buttons: [{ label: 'INSERT', x: C[0], action: 'INSERT', gray: true }, { label: 'DELETE', x: C[1], action: 'DELETE', gray: true }] },
 ];
 
 /** The white spine the tabs hang off: [top, bottom]. It breaks between EFFECT and EFFECT SETUP. */
-export const KNOB_FN_SPINES: [number, number][] = [[50, 393], [396, 536]];
+export const KNOB_FN_SPINES: [number, number][] = [[52, 389], [396, 536]];
 
 /** White section tabs down the far left: [label, top, bottom]. */
 export const KNOB_FN_TABS: [string, number, number][] = [
-  ['SOUND', 50, 123], ['GROOVE', 127, 161], ['LFO', 165, 233], ['EQ', 237, 306],
-  ['FILTER', 318, 356], ['EFFECT', 359, 393], ['EFFECT\nSETUP', 396, 463], ['JOB', 467, 499], ['NAME', 503, 536],
+  ['SOUND', 52, 122], ['GROOVE', 129, 158], ['LFO', 166, 231], ['EQ', 238, 305],
+  ['FILTER', 322, 352], ['EFFECT', 359, 389], ['EFFECT\nSETUP', 396, 462], ['JOB', 470, 500], ['NAME', 506, 536],
 ];
 
 // ---------------- Mode buttons + function grid ----------------
