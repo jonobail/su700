@@ -1,5 +1,7 @@
 <p align="center"><img src="docs/su700-logo.svg" alt="Yamaha SU700 Sampling Unit" width="560"></p>
 
+<p align="center"><img src="docs/su700-panel.png" alt="SU700 emulator panel" width="520"></p>
+
 A browser emulation of the Yamaha SU700 Sampling Unit (1999), built with Angular. The input
 audio comes from an uploaded file or a short clip sampled from a YouTube video, instead of the
 analog inputs.
